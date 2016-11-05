@@ -215,6 +215,61 @@ namespace Test
             VerifyCSharpFix(originalCode, fixedCode, null, true);
         }
 
+        [Fact]
+        public void SimplePropertyWithNotNullArgument()
+        {
+            const string originalCode = @"
+using System.Diagnostics.Contracts;
+
+namespace Test
+{
+    class Class
+    {
+        object Property
+        {
+            get
+            {
+                Contract.Ensures(Contract.Result<object>() != null);
+                return default(object);
+            }
+            set
+            {
+                Contract.Requires(value != null);
+            }
+        }
+    }
+}";
+
+            var expected = new DiagnosticResult(8, 16, "Property");
+
+            VerifyCSharpDiagnostic(originalCode, expected);
+
+            const string fixedCode = @"
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    class Class
+    {
+        [NotNull]
+        object Property
+        {
+            get
+            {
+                Contract.Ensures(Contract.Result<object>() != null);
+                return default(object);
+            }
+            set
+            {
+                Contract.Requires(value != null);
+            }
+        }
+    }
+}";
+
+            VerifyCSharpFix(originalCode, fixedCode, null, true);
+        }
     }
 
     // ovverides & tools

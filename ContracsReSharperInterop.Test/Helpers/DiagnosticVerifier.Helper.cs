@@ -153,7 +153,7 @@
             var solution = new AdhocWorkspace()
                 .CurrentSolution
                 .AddProject(projectId, TestProjectName, TestProjectName, language)
-                // .AddMetadataReference(projectId, _jetBrainsAnnotationsReference)
+                .AddMetadataReference(projectId, _jetBrainsAnnotationsReference)
                 .AddMetadataReference(projectId, _corlibReference)
                 .AddMetadataReference(projectId, _systemCoreReference)
                 .AddMetadataReference(projectId, _cSharpSymbolsReference)

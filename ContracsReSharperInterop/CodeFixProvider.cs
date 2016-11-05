@@ -32,27 +32,29 @@
         {
             var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
 
-            var diagnostic = context.Diagnostics.First();
-            var diagnosticSpan = diagnostic.Location.SourceSpan;
+            foreach (var diagnostic in context.Diagnostics)
+            {
+                var diagnosticSpan = diagnostic.Location.SourceSpan;
 
-            var declaration = root.FindNode(diagnosticSpan) as ParameterSyntax;
-            if (declaration == null)
-                return;
+                var syntaxNode = root.FindNode(diagnosticSpan);
+                if (syntaxNode == null)
+                    return;
 
-            var codeAction = CodeAction.Create(Title, c => AddNotNullAnnotationAsync(context.Document, declaration, c), Title);
+                var codeAction = CodeAction.Create(Title, c => AddNotNullAnnotationAsync(context.Document, syntaxNode, c), Title);
 
-            context.RegisterCodeFix(codeAction, diagnostic);
+                context.RegisterCodeFix(codeAction, diagnostic);
+            }
         }
 
-        private static async Task<Document> AddNotNullAnnotationAsync(Document document, ParameterSyntax parameter, CancellationToken cancellationToken)
+        private static async Task<Document> AddNotNullAnnotationAsync(Document document, SyntaxNode node, CancellationToken cancellationToken)
         {
             var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false) as CompilationUnitSyntax;
             if (root == null)
                 return document;
 
-            var hasUsingDirective = HasUsingDirective(root, parameter);
+            var hasUsingDirective = HasUsingDirective(root, node);
 
-            root = root.ReplaceNode(parameter, AddNotNullAttribute(parameter));
+            root = root.ReplaceNode(node, AddNotNullAttribute(node));
 
             if (!hasUsingDirective)
             {
@@ -82,14 +84,30 @@
             return hasUsingDirective;
         }
 
-        private static ParameterSyntax AddNotNullAttribute(ParameterSyntax parameter)
+        private static SyntaxNode AddNotNullAttribute(SyntaxNode node)
+        {
+            var parameter = node as ParameterSyntax;
+            if (parameter != null)
+            {
+                return parameter.WithAttributeLists(parameter.AttributeLists.Add(CreateNotNullAttributeListSyntax()));
+            }
+
+            var property = node as PropertyDeclarationSyntax;
+            if (property != null)
+            {
+                return property.WithAttributeLists(property.AttributeLists.Add(CreateNotNullAttributeListSyntax()));
+            }
+
+            return node;
+        }
+
+        private static AttributeListSyntax CreateNotNullAttributeListSyntax()
         {
             const string notnull = "NotNull";
 
-            var separatedSyntaxList = SyntaxFactory.SeparatedList(new[] { SyntaxFactory.Attribute(SyntaxFactory.IdentifierName(notnull)) });
+            var separatedSyntaxList = SyntaxFactory.SeparatedList(new[] {SyntaxFactory.Attribute(SyntaxFactory.IdentifierName(notnull))});
             var attributeList = SyntaxFactory.AttributeList(separatedSyntaxList);
-            var attributeListSyntax = parameter.AttributeLists.Add(attributeList);
-            return parameter.WithAttributeLists(attributeListSyntax);
+            return attributeList;
         }
     }
 }
