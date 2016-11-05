@@ -56,6 +56,27 @@ namespace Test
         }
 
         [Fact]
+        public void SimpleMethodWithNotNullArgumentThatAlreadyHasAnAttribute()
+        {
+            const string originalCode = @"
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    class Class
+    {
+        void Method([NotNull] object arg)
+        {
+            Contract.Requires(arg != null);
+        }
+    }
+}";
+
+            VerifyCSharpDiagnostic(originalCode);
+        }
+
+        [Fact]
         public void SimpleMethodWithNotNullArgumentAndExistingNamespace()
         {
             const string originalCode = @"
@@ -216,6 +237,48 @@ namespace Test
         }
 
         [Fact]
+        public void SimpleMethodTwoNotNullArgumentsWhereOneHasAlreadyAnAttribute()
+        {
+            const string originalCode = @"
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    class Class
+    {
+        void Method([NotNull] object arg, string arg2)
+        {
+            Contract.Requires(arg != null);
+            Contract.Requires(arg2 != null);
+        }
+    }
+}";
+
+            var expected2 = new DiagnosticResult(9, 43, "arg2");
+
+            VerifyCSharpDiagnostic(originalCode, expected2);
+
+            const string fixedCode = @"
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    class Class
+    {
+        void Method([NotNull] object arg, [NotNull] string arg2)
+        {
+            Contract.Requires(arg != null);
+            Contract.Requires(arg2 != null);
+        }
+    }
+}";
+
+            VerifyCSharpFix(originalCode, fixedCode, null, true);
+        }
+
+        [Fact]
         public void SimplePropertyWithNotNullArgument()
         {
             const string originalCode = @"
@@ -269,6 +332,36 @@ namespace Test
 }";
 
             VerifyCSharpFix(originalCode, fixedCode, null, true);
+        }
+
+        [Fact]
+        public void SimplePropertyWithNotNullArgumentThatAlreadyHasAnAttribute()
+        {
+            const string originalCode = @"
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    class Class
+    {
+        [NotNull]
+        object Property
+        {
+            get
+            {
+                Contract.Ensures(Contract.Result<object>() != null);
+                return default(object);
+            }
+            set
+            {
+                Contract.Requires(value != null);
+            }
+        }
+    }
+}";
+
+            VerifyCSharpDiagnostic(originalCode);
         }
     }
 

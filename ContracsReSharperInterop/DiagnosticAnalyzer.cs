@@ -58,6 +58,16 @@ namespace ContracsReSharperInterop
                 if (outerMethodSymbol.MethodKind == MethodKind.PropertySet)
                 {
                     var propertySymbol = outerMethodSymbol.AssociatedSymbol;
+
+                    var propertySyntax = propertySymbol?.Locations
+                        .Where(l => l.IsInSource)
+                        .Select(l => l.SourceSpan)
+                        .Select(s => root.FindNode(s))
+                        .FirstOrDefault() as PropertyDeclarationSyntax;
+
+                    if (propertySyntax?.AttributeLists.Any(attr => attr.Attributes.Any(a => (a.Name as IdentifierNameSyntax)?.Identifier.Text.Equals("NotNull") == true)) == true)
+                        continue;
+
                     var diagnostic = Diagnostic.Create(_rule, propertySymbol.Locations.First(), propertySymbol.Name);
                     context.ReportDiagnostic(diagnostic);
                     continue;
