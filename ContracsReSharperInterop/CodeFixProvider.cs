@@ -15,6 +15,8 @@
     using Microsoft.CodeAnalysis.CSharp.Syntax;
     using Microsoft.CodeAnalysis.Rename;
 
+    using TomsToolbox.Core;
+
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(ContracsReSharperInteropCodeFixProvider)), Shared]
     public class ContracsReSharperInteropCodeFixProvider : CodeFixProvider
     {
@@ -86,19 +88,11 @@
 
         private static SyntaxNode AddNotNullAttribute(SyntaxNode node)
         {
-            var parameter = node as ParameterSyntax;
-            if (parameter != null)
-            {
-                return parameter.WithAttributeLists(parameter.AttributeLists.Add(CreateNotNullAttributeListSyntax()));
-            }
-
-            var property = node as PropertyDeclarationSyntax;
-            if (property != null)
-            {
-                return property.WithAttributeLists(property.AttributeLists.Add(CreateNotNullAttributeListSyntax()));
-            }
-
-            return node;
+            return node.TryCast().Returning<SyntaxNode>()
+                .When<ParameterSyntax>(item => item.WithAttributeLists(item.AttributeLists.Add(CreateNotNullAttributeListSyntax())))
+                .When<PropertyDeclarationSyntax>(item => item.WithAttributeLists(item.AttributeLists.Add(CreateNotNullAttributeListSyntax())))
+                .When<MethodDeclarationSyntax>(item => item.WithAttributeLists(item.AttributeLists.Add(CreateNotNullAttributeListSyntax())))
+                .Else(item => item);
         }
 
         private static AttributeListSyntax CreateNotNullAttributeListSyntax()

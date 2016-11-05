@@ -1,6 +1,6 @@
 namespace ContracsReSharperInterop
 {
-    using System;
+    using System.Collections.Generic;
     using System.Collections.Immutable;
     using System.Linq;
 
@@ -8,6 +8,8 @@ namespace ContracsReSharperInterop
     using Microsoft.CodeAnalysis.CSharp;
     using Microsoft.CodeAnalysis.CSharp.Syntax;
     using Microsoft.CodeAnalysis.Diagnostics;
+
+    using TomsToolbox.Core;
 
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class ContracsReSharperInteropAnalyzer : DiagnosticAnalyzer
@@ -34,20 +36,22 @@ namespace ContracsReSharperInterop
             var root = context.SemanticModel.SyntaxTree.GetRoot(context.CancellationToken);
 
             var invocationExpressionSyntaxNodes = root.DescendantNodesAndSelf()
-                .OfType<InvocationExpressionSyntax>();
+                .OfType<InvocationExpressionSyntax>()
+                .ToArray();
 
+            AnalyzeRequires(context, root, invocationExpressionSyntaxNodes);
+            AnalyzeEnsures(context, root, invocationExpressionSyntaxNodes);
+        }
+
+        private static void AnalyzeRequires(SemanticModelAnalysisContext context, SyntaxNode root, IEnumerable<InvocationExpressionSyntax> invocationExpressionSyntaxNodes)
+        {
             // find all symbols that are part of a ContractRequires(...), e.g. ContractRequires(x != null) => x
 
-            var notNullParameterSymbols = invocationExpressionSyntaxNodes
-                .Where(item => IsContractRequiresExpression(context, item.Expression as MemberAccessExpressionSyntax)) // find all "ContractRequires(...)" 
-                .Select(node => node.ArgumentList.Arguments) // get the arguments
-                .Where(args => args.Count == 1) // ContractRequires has just one argument
-                .Select(args => args.Single().Expression) // get the expression of the argument
-                .Select(GetNotNullIdentifyerSyntax) // get the identifier syntax of the argument that is part of a not null check
-                .Select(syntax => context.SemanticModel.GetSymbolInfo(syntax).Symbol) // get the parameter symbol 
-                .OfType<IParameterSymbol>()
-                .Where(item => item != null)
-                .ToArray();
+            var requiresExpressions = invocationExpressionSyntaxNodes
+                .Where(item => context.IsContractExpression(item.Expression as MemberAccessExpressionSyntax, "Requires")); // find all "Contract.Requires(...)" 
+
+            var notNullParameterSymbols = requiresExpressions.GetNotNullIdentifierSyntax<IdentifierNameSyntax>()
+                .Select(syntax => context.SemanticModel.GetSymbolInfo(syntax).Symbol); // get the parameter symbol 
 
             foreach (var notNullParameterSymbol in notNullParameterSymbols)
             {
@@ -58,14 +62,12 @@ namespace ContracsReSharperInterop
                 if (outerMethodSymbol.MethodKind == MethodKind.PropertySet)
                 {
                     var propertySymbol = outerMethodSymbol.AssociatedSymbol;
+                    var propertySyntax = propertySymbol.GetSyntaxNode<PropertyDeclarationSyntax>(root);
 
-                    var propertySyntax = propertySymbol?.Locations
-                        .Where(l => l.IsInSource)
-                        .Select(l => l.SourceSpan)
-                        .Select(s => root.FindNode(s))
-                        .FirstOrDefault() as PropertyDeclarationSyntax;
+                    if (propertySyntax == null)
+                        continue;
 
-                    if (propertySyntax?.AttributeLists.Any(attr => attr.Attributes.Any(a => (a.Name as IdentifierNameSyntax)?.Identifier.Text.Equals("NotNull") == true)) == true)
+                    if (propertySyntax.AttributeLists.ContainsNotNullAttribute())
                         continue;
 
                     var diagnostic = Diagnostic.Create(_rule, propertySymbol.Locations.First(), propertySymbol.Name);
@@ -73,15 +75,10 @@ namespace ContracsReSharperInterop
                     continue;
                 }
 
-                var parameterSyntax = notNullParameterSymbol.Locations
-                    .Where(l => l.IsInSource)
-                    .Select(l => l.SourceSpan)
-                    .Select(s => root.FindNode(s))
-                    .FirstOrDefault() as ParameterSyntax;
-
+                var parameterSyntax = notNullParameterSymbol.GetSyntaxNode<ParameterSyntax>(root);
                 if (parameterSyntax != null)
                 {
-                    if (parameterSyntax.AttributeLists.Any(attr => attr.Attributes.Any(a => (a.Name as IdentifierNameSyntax)?.Identifier.Text.Equals("NotNull") == true)))
+                    if (parameterSyntax.AttributeLists.ContainsNotNullAttribute())
                         continue;
 
                     // now found ContractRequires.. without corresponding NotNull....
@@ -92,62 +89,31 @@ namespace ContracsReSharperInterop
             }
         }
 
-        private static IdentifierNameSyntax GetNotNullIdentifyerSyntax(ExpressionSyntax argumentExpression)
+        private static void AnalyzeEnsures(SemanticModelAnalysisContext context, SyntaxNode root, IEnumerable<InvocationExpressionSyntax> invocationExpressionSyntaxNodes)
         {
-            var binaryArgumentExpression = argumentExpression as BinaryExpressionSyntax;
-            if (binaryArgumentExpression?.Kind() == SyntaxKind.NotEqualsExpression)
-                return GetArgumentSyntaxOfNotNullArgument(binaryArgumentExpression);
+            // find all symbols that are part of a ContractRequires(...), e.g. ContractRequires(x != null) => x
 
-            var unaryArgumentExpression = argumentExpression as PrefixUnaryExpressionSyntax;
-            if (unaryArgumentExpression?.Kind() == SyntaxKind.LogicalNotExpression)
-                return GetIdentifyerSyntaxOfNotNullStringArgument(unaryArgumentExpression);
+            var ensuresExpressions = invocationExpressionSyntaxNodes
+                .Where(item => context.IsContractExpression(item.Expression as MemberAccessExpressionSyntax, "Ensures")) // find all "Contract.Ensures(...)" 
+                .Where(item => (item.GetNotNullIdentifierSyntax<InvocationExpressionSyntax>().Expression as MemberAccessExpressionSyntax)?.Name.Identifier.Text == "Result")
+                .ToArray();
 
-            return null;
-        }
-
-        private static IdentifierNameSyntax GetIdentifyerSyntaxOfNotNullStringArgument(PrefixUnaryExpressionSyntax unaryArgumentExpression)
-        {
-            var nullStringChecks = new[] { "string.IsNullOrEmpty", "string.IsNullOrWhitespace" };
-
-            var invocationExpressionSyntax = unaryArgumentExpression.Operand as InvocationExpressionSyntax;
-            if (invocationExpressionSyntax == null)
-                return null;
-
-            var expressionValue = invocationExpressionSyntax.Expression.ToString();
-
-            if (!nullStringChecks.Any(item => string.Equals(expressionValue, item, StringComparison.OrdinalIgnoreCase)))
-                return null;
-
-            var arguments = invocationExpressionSyntax.ArgumentList.Arguments;
-            if (arguments.Count != 1)
-                return null;
-
-            return arguments.Single().Expression as IdentifierNameSyntax;
-        }
-
-        private static bool IsContractRequiresExpression(SemanticModelAnalysisContext context, MemberAccessExpressionSyntax expressionSyntax)
-        {
-            if (expressionSyntax?.Name.ToString() != "Requires")
-                return false;
-
-            var contractRequiresMethodSymbol = context.SemanticModel.GetSymbolInfo(expressionSyntax).Symbol as IMethodSymbol;
-
-            return contractRequiresMethodSymbol?.ToString().StartsWith("System.Diagnostics.Contracts.Contract.Requires", StringComparison.Ordinal) == true;
-        }
-
-        private static IdentifierNameSyntax GetArgumentSyntaxOfNotNullArgument(BinaryExpressionSyntax argumentExpression)
-        {
-            if (argumentExpression.Left.Kind() == SyntaxKind.NullLiteralExpression)
+            foreach (var ensuresExpression in ensuresExpressions)
             {
-                return argumentExpression.Right as IdentifierNameSyntax;
-            }
+                var outerMember = ensuresExpression.Ancestors().OfType<MemberDeclarationSyntax>().FirstOrDefault();
 
-            if (argumentExpression.Right.Kind() == SyntaxKind.NullLiteralExpression)
-            {
-                return argumentExpression.Left as IdentifierNameSyntax;
+                outerMember.TryCast()
+                    .When<MethodDeclarationSyntax>(syntax =>
+                    {
+                        if (!syntax.AttributeLists.ContainsNotNullAttribute())
+                            context.ReportDiagnostic(Diagnostic.Create(_rule, syntax.Identifier.GetLocation(), syntax.Identifier.Text));
+                    })
+                    .When<PropertyDeclarationSyntax>(syntax =>
+                    {
+                        if (!syntax.AttributeLists.ContainsNotNullAttribute())
+                            context.ReportDiagnostic(Diagnostic.Create(_rule, syntax.Identifier.GetLocation(), syntax.Identifier.Text));
+                    });
             }
-
-            return null;
         }
     }
 }
