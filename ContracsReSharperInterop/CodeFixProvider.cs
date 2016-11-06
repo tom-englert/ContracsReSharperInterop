@@ -25,6 +25,10 @@
 
         public sealed override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create(ContracsReSharperInteropAnalyzer.DiagnosticId);
 
+        public ContracsReSharperInteropCodeFixProvider()
+        {
+        }
+
         public sealed override FixAllProvider GetFixAllProvider()
         {
             return WellKnownFixAllProviders.BatchFixer;
@@ -68,10 +72,9 @@
 
         private static CompilationUnitSyntax AddUsingDirective(CompilationUnitSyntax root)
         {
-            var usingSyntax = new[] {SyntaxFactory.UsingDirective(SyntaxFactory.IdentifierName(UsingDirectiveName))};
+            var usingSyntax = new[] { SyntaxFactory.UsingDirective(SyntaxFactory.IdentifierName(UsingDirectiveName)) };
 
-            root = root.AddUsings(usingSyntax);
-            return root;
+            return root.AddUsings(usingSyntax);
         }
 
         private static bool HasUsingDirective(SyntaxNode root, SyntaxNode item)
@@ -92,6 +95,7 @@
                 .When<ParameterSyntax>(item => item.WithAttributeLists(item.AttributeLists.Add(CreateNotNullAttributeListSyntax())))
                 .When<PropertyDeclarationSyntax>(item => item.WithAttributeLists(item.AttributeLists.Add(CreateNotNullAttributeListSyntax())))
                 .When<MethodDeclarationSyntax>(item => item.WithAttributeLists(item.AttributeLists.Add(CreateNotNullAttributeListSyntax())))
+                .When<FieldDeclarationSyntax>(item => item.WithAttributeLists(item.AttributeLists.Add(CreateNotNullAttributeListSyntax())))
                 .Else(item => item);
         }
 
@@ -99,7 +103,7 @@
         {
             const string notnull = "NotNull";
 
-            var separatedSyntaxList = SyntaxFactory.SeparatedList(new[] {SyntaxFactory.Attribute(SyntaxFactory.IdentifierName(notnull))});
+            var separatedSyntaxList = SyntaxFactory.SeparatedList(new[] { SyntaxFactory.Attribute(SyntaxFactory.IdentifierName(notnull)) });
             var attributeList = SyntaxFactory.AttributeList(separatedSyntaxList);
             return attributeList;
         }

@@ -27,8 +27,10 @@
                 .FirstOrDefault() as T;
         }
 
-        public static bool IsContractExpression(this SemanticModelAnalysisContext context, MemberAccessExpressionSyntax expressionSyntax, string name)
+        public static bool IsContractExpression(this SemanticModelAnalysisContext context, MemberAccessExpressionSyntax expressionSyntax, ContractCategory category)
         {
+            var name = category.ToString();
+
             if (expressionSyntax?.Name.ToString() != name)
                 return false;
 

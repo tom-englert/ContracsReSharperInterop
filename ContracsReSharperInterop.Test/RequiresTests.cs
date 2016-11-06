@@ -29,7 +29,7 @@ namespace Test
     }
 }";
 
-            var expected = new DiagnosticResult(8, 21, "arg");
+            var expected = new DiagnosticResult(8, 28, "arg");
 
             VerifyCSharpDiagnostic(originalCode, expected);
 
@@ -90,7 +90,7 @@ namespace Test
     }
 }";
 
-            var expected = new DiagnosticResult(9, 21, "arg");
+            var expected = new DiagnosticResult(9, 28, "arg");
 
             VerifyCSharpDiagnostic(originalCode, expected);
 
@@ -129,7 +129,7 @@ namespace Test
     }
 }";
 
-            var expected = new DiagnosticResult(8, 21, "arg");
+            var expected = new DiagnosticResult(8, 28, "arg");
 
             VerifyCSharpDiagnostic(originalCode, expected);
 
@@ -168,7 +168,7 @@ namespace Test
     }
 }";
 
-            var expected = new DiagnosticResult(8, 21, "arg");
+            var expected = new DiagnosticResult(8, 28, "arg");
 
             VerifyCSharpDiagnostic(originalCode, expected);
 
@@ -208,8 +208,8 @@ namespace Test
     }
 }";
 
-            var expected1 = new DiagnosticResult(8, 21, "arg");
-            var expected2 = new DiagnosticResult(8, 33, "arg2");
+            var expected1 = new DiagnosticResult(8, 28, "arg");
+            var expected2 = new DiagnosticResult(8, 40, "arg2");
 
             VerifyCSharpDiagnostic(originalCode, expected1, expected2);
 
@@ -251,7 +251,7 @@ namespace Test
     }
 }";
 
-            var expected2 = new DiagnosticResult(9, 43, "arg2");
+            var expected2 = new DiagnosticResult(9, 50, "arg2");
 
             VerifyCSharpDiagnostic(originalCode, expected2);
 
@@ -288,6 +288,7 @@ namespace Test
         {
             get
             {
+                Contract.Ensures(Contract.Result<object>() != null);
                 return default(object);
             }
             set
@@ -315,6 +316,7 @@ namespace Test
         {
             get
             {
+                Contract.Ensures(Contract.Result<object>() != null);
                 return default(object);
             }
             set
