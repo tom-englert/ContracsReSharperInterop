@@ -25,10 +25,6 @@
 
         public sealed override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create(ContracsReSharperInteropAnalyzer.DiagnosticId);
 
-        public ContracsReSharperInteropCodeFixProvider()
-        {
-        }
-
         public sealed override FixAllProvider GetFixAllProvider()
         {
             return WellKnownFixAllProviders.BatchFixer;
@@ -91,20 +87,30 @@
 
         private static SyntaxNode AddNotNullAttribute(SyntaxNode node)
         {
-            return node.TryCast().Returning<SyntaxNode>()
-                .When<ParameterSyntax>(item => item.WithAttributeLists(item.AttributeLists.Add(CreateNotNullAttributeListSyntax())))
-                .When<PropertyDeclarationSyntax>(item => item.WithAttributeLists(item.AttributeLists.Add(CreateNotNullAttributeListSyntax())))
-                .When<MethodDeclarationSyntax>(item => item.WithAttributeLists(item.AttributeLists.Add(CreateNotNullAttributeListSyntax())))
-                .When<FieldDeclarationSyntax>(item => item.WithAttributeLists(item.AttributeLists.Add(CreateNotNullAttributeListSyntax())))
+            var trivia = new SyntaxTriviaList();
+
+            if (node.HasLeadingTrivia)
+            {
+                trivia = node.GetLeadingTrivia();
+                node = node.WithLeadingTrivia();
+            }
+
+            node = node.TryCast().Returning<SyntaxNode>()
+                .When<ParameterSyntax>(item => item.WithAttributeLists(item.AttributeLists.Add(CreateNotNullAttributeListSyntax(trivia))))
+                .When<PropertyDeclarationSyntax>(item => item.WithAttributeLists(item.AttributeLists.Add(CreateNotNullAttributeListSyntax(trivia))))
+                .When<MethodDeclarationSyntax>(item => item.WithAttributeLists(item.AttributeLists.Add(CreateNotNullAttributeListSyntax(trivia))))
+                .When<FieldDeclarationSyntax>(item => item.WithAttributeLists(item.AttributeLists.Add(CreateNotNullAttributeListSyntax(trivia))))
                 .Else(item => item);
+
+            return node;
         }
 
-        private static AttributeListSyntax CreateNotNullAttributeListSyntax()
+        private static AttributeListSyntax CreateNotNullAttributeListSyntax(SyntaxTriviaList trivia)
         {
             const string notnull = "NotNull";
 
             var separatedSyntaxList = SyntaxFactory.SeparatedList(new[] { SyntaxFactory.Attribute(SyntaxFactory.IdentifierName(notnull)) });
-            var attributeList = SyntaxFactory.AttributeList(separatedSyntaxList);
+            var attributeList = SyntaxFactory.AttributeList(separatedSyntaxList).WithLeadingTrivia(trivia);
             return attributeList;
         }
     }
