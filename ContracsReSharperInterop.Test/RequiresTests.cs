@@ -2,7 +2,7 @@
 {
     using Xunit;
 
-    public class RequiresTests : CodeFixVerifier
+    public class RequiresTests : NotNullForContractCodeFixVerifier
     {
         [Fact]
         public void EmptyTextGeneratesNoFixes()
@@ -342,6 +342,35 @@ namespace Test
     class Class
     {
         [NotNull]
+        object Property
+        {
+            get
+            {
+                Contract.Ensures(Contract.Result<object>() != null);
+                return default(object);
+            }
+            set
+            {
+                Contract.Requires(value != null);
+            }
+        }
+    }
+}";
+
+            VerifyCSharpDiagnostic(originalCode);
+        }
+
+        [Fact]
+        public void SimplePropertyWithNotNullArgumentThatAlreadyHasAFullQualifiedAttribute()
+        {
+            const string originalCode = @"
+using System.Diagnostics.Contracts;
+
+namespace Test
+{
+    class Class
+    {
+        [JetBrains.Annotations.NotNull]
         object Property
         {
             get

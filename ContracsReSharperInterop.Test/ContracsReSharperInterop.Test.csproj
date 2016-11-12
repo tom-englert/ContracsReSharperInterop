@@ -122,7 +122,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CodeFixVerifier.cs" />
+    <Compile Include="ConditionalForContractInvariantCodeFixVerifier.cs" />
+    <Compile Include="ContractInvariantTests.cs" />
+    <Compile Include="NotNullForContractCodeFixVerifier.cs" />
     <Compile Include="CombinedTests.cs" />
     <Compile Include="EnsuresTests.cs" />
     <Compile Include="InvariantTests.cs" />

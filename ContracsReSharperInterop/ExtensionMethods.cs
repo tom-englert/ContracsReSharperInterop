@@ -15,7 +15,9 @@
     {
         public static bool ContainsNotNullAttribute(this SyntaxList<AttributeListSyntax> attributeLists)
         {
-            return attributeLists.Any(attr => attr.Attributes.Any(a => (a.Name as IdentifierNameSyntax)?.Identifier.Text.Equals("NotNull") == true));
+            return attributeLists.SelectMany(attr => attr.Attributes)
+                .Select(GetAttributeName)
+                .Any(name => string.Equals("NotNull", name, StringComparison.Ordinal));
         }
 
         public static T GetSyntaxNode<T>(this ISymbol symbol, SyntaxNode root) where T : SyntaxNode
@@ -80,7 +82,7 @@
 
             var expressionValue = invocationExpressionSyntax.Expression.ToString();
 
-            if (!nullStringChecks.Any(item => string.Equals(expressionValue, item, StringComparison.OrdinalIgnoreCase)))
+            if (!nullStringChecks.Any(item => String.Equals(expressionValue, item, StringComparison.OrdinalIgnoreCase)))
                 return null;
 
             var arguments = invocationExpressionSyntax.ArgumentList.Arguments;
@@ -107,6 +109,52 @@
             }
 
             return null;
+        }
+
+        public static string GetAttributeName(this AttributeSyntax node)
+        {
+            var nodeName = node.Name.TryCast().Returning<string>()
+                .When<IdentifierNameSyntax>(syntax => syntax.Identifier.Text)
+                .When<QualifiedNameSyntax>(syntax => syntax.Right.Identifier.Text)
+                .Else(_ => null);
+
+            const string attributeKeyName = "Attribute";
+
+            if (nodeName.EndsWith(attributeKeyName, StringComparison.Ordinal))
+                nodeName = nodeName.Substring(0, nodeName.Length - attributeKeyName.Length);
+
+            return nodeName;
+        }
+
+        public static CompilationUnitSyntax AddUsingDirective(this CompilationUnitSyntax root, string usingDirectiveName)
+        {
+            var usingSyntax = new[] { SyntaxFactory.UsingDirective(SyntaxFactory.IdentifierName(usingDirectiveName)) };
+
+            return root.AddUsings(usingSyntax);
+        }
+
+        public static bool HasUsingDirective(this SyntaxNode root, SyntaxNode item, string usingDirectiveName)
+        {
+            var ancestors = new HashSet<SyntaxNode>(item.Ancestors());
+
+            var hasUsingDirective = root.DescendantNodes()
+                .Where(node => node.Kind() == SyntaxKind.UsingDirective)
+                .OfType<UsingDirectiveSyntax>()
+                .Where(x => ancestors.Contains(x.Parent))
+                .Any(node => node.Name.ToString().Equals(usingDirectiveName, StringComparison.Ordinal));
+
+            return hasUsingDirective;
+        }
+
+        public static bool HasAttributes(this SyntaxNode node)
+        {
+            return node.TryCast().Returning<bool>()
+                .When<ParameterSyntax>(item => item.AttributeLists.Any())
+                .When<PropertyDeclarationSyntax>(item => item.AttributeLists.Any())
+                .When<MethodDeclarationSyntax>(item => item.AttributeLists.Any())
+                .When<FieldDeclarationSyntax>(item => item.AttributeLists.Any())
+                .When<ClassDeclarationSyntax>(item => item.AttributeLists.Any())
+                .Else(item => false);
         }
     }
 }

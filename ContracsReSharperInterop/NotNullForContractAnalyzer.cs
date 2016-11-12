@@ -12,17 +12,10 @@ namespace ContracsReSharperInterop
 
     using TomsToolbox.Core;
 
-    public enum ContractCategory
-    {
-        Requires,
-        Ensures,
-        Invariant
-    }
-
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
-    public class ContracsReSharperInteropAnalyzer : DiagnosticAnalyzer
+    internal class NotNullForContractAnalyzer : DiagnosticAnalyzer
     {
-        public const string DiagnosticId = "ContracsReSharperInterop";
+        public const string DiagnosticId = "ContracsReSharperInterop_NotNullForContract";
 
         private const string Title = "Element with not-null contract does not have a corresponding [NotNull] attribute.";
         private const string MessageFormat = "Element '{0}' has a not-null contract but does not have a corresponding [NotNull] attribute.";

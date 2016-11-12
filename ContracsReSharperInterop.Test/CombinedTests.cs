@@ -2,7 +2,7 @@
 {
     using Xunit;
 
-    public class CombinedTests : CodeFixVerifier
+    public class CombinedTests : NotNullForContractCodeFixVerifier
     {
         [Fact]
         public void AllInOne()

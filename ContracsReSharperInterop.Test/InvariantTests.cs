@@ -1,9 +1,8 @@
-﻿using System.Diagnostics.Contracts;
-namespace ContracsReSharperInterop.Test
+﻿namespace ContracsReSharperInterop.Test
 {
     using Xunit;
 
-    public class InvariantTests : CodeFixVerifier
+    public class InvariantTests : NotNullForContractCodeFixVerifier
     {
         [Fact]
         public void InvariantField()
@@ -183,6 +182,60 @@ namespace Test
         /// <summary>
         /// This is a Test!
         /// </summary>
+        [NotNull]
+        public object Test { get; set; }
+
+        [ContractInvariantMethod]
+        private void ObjectInvariant()
+        {
+            Contract.Invariant(Test != null);
+        }
+    }
+}";
+
+            VerifyCSharpFix(originalCode, fixedCode, null, true);
+        }
+
+        [Fact]
+        public void InvariantPropertyWithExistingAttributeAndXmlComment()
+        {
+            const string originalCode = @"
+using System.Diagnostics.Contracts;
+
+namespace Test
+{
+    class Class
+    {
+        /// <summary>
+        /// This is a Test!
+        /// </summary>
+        [System.Diagnostics.DebuggerHidden]
+        public object Test { get; set; }
+
+        [ContractInvariantMethod]
+        private void ObjectInvariant()
+        {
+            Contract.Invariant(Test != null);
+        }
+    }
+}";
+
+            var expected = new DiagnosticResult(12, 23, "Test");
+
+            VerifyCSharpDiagnostic(originalCode, expected);
+
+            const string fixedCode = @"
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    class Class
+    {
+        /// <summary>
+        /// This is a Test!
+        /// </summary>
+        [System.Diagnostics.DebuggerHidden]
         [NotNull]
         public object Test { get; set; }
 

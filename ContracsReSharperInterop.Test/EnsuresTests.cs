@@ -2,7 +2,7 @@
 {
     using Xunit;
 
-    public class EnsuresTests : CodeFixVerifier
+    public class EnsuresTests : NotNullForContractCodeFixVerifier
     {
         [Fact]
         public void MethodEnsuresNotNull()
@@ -135,5 +135,50 @@ namespace Test
 
             VerifyCSharpFix(originalCode, fixedCode, null, true);
         }
+
+        [Fact]
+        public void MethodWithExistingArbitraryAttributeEnsuresNotNull()
+        {
+            const string originalCode = @"
+using System.Diagnostics.Contracts;
+
+namespace Test
+{
+    class Class
+    {
+        [System.Diagnostics.DebuggerHidden]
+        object MyMethod(object arg)
+        {
+            Contract.Ensures(Contract.Result<object>() != null);
+            return arg;
+        }
+    }
+}";
+
+            var expected = new DiagnosticResult(9, 16, "MyMethod");
+
+            VerifyCSharpDiagnostic(originalCode, expected);
+
+            const string fixedCode = @"
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    class Class
+    {
+        [System.Diagnostics.DebuggerHidden]
+        [NotNull]
+        object MyMethod(object arg)
+        {
+            Contract.Ensures(Contract.Result<object>() != null);
+            return arg;
+        }
+    }
+}";
+
+            VerifyCSharpFix(originalCode, fixedCode, null, true);
+        }
+
     }
 }
