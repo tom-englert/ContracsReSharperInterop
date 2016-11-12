@@ -1,4 +1,4 @@
-﻿# CodeContracs R# Interop
+﻿# CodeContracs R# Interop ![Badge](https://tom-englert.visualstudio.com/_apis/public/build/definitions/75bf84d2-d359-404a-a712-07c9f693f635/9/badge)
 
 Code fixes to automate adding R#'s `[NotNull]` attributes for the corrseponding `Contract.Requires`, `Contract.Ensures` or `Contract.Invariant`.
 
