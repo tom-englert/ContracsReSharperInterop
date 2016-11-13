@@ -5,6 +5,8 @@ namespace ContracsReSharperInterop
     using System.Collections.Immutable;
     using System.Linq;
 
+    using JetBrains.Annotations;
+
     using Microsoft.CodeAnalysis;
     using Microsoft.CodeAnalysis.CSharp;
     using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -29,12 +31,14 @@ namespace ContracsReSharperInterop
 
         public override void Initialize(AnalysisContext context)
         {
-            context.RegisterSemanticModelAction(Analyze);
+            context?.RegisterSemanticModelAction(Analyze);
         }
 
         private static void Analyze(SemanticModelAnalysisContext context)
         {
-            var root = context.SemanticModel.SyntaxTree.GetRoot(context.CancellationToken);
+            var root = context.SemanticModel?.SyntaxTree?.GetRoot(context.CancellationToken);
+            if (root == null)
+                return;
 
             var diags = new Analyzer(context, root).Analyze();
 
@@ -47,10 +51,12 @@ namespace ContracsReSharperInterop
         private class Analyzer
         {
             private readonly SemanticModelAnalysisContext _context;
+            [NotNull]
             private readonly SyntaxNode _root;
+            [NotNull]
             private readonly ICollection<InvocationExpressionSyntax> _invocationExpressionSyntaxNodes;
 
-            public Analyzer(SemanticModelAnalysisContext context, SyntaxNode root)
+            public Analyzer(SemanticModelAnalysisContext context, [NotNull] SyntaxNode root)
             {
                 _context = context;
                 _root = root;
@@ -59,6 +65,8 @@ namespace ContracsReSharperInterop
                     .ToArray();
             }
 
+            [ItemNotNull]
+            [NotNull]
             public IEnumerable<Diag> Analyze()
             {
                 var diags = AnalyzeRequires()
@@ -68,6 +76,7 @@ namespace ContracsReSharperInterop
                     .Distinct()
                     .ToArray();
 
+                // ReSharper disable once AssignNullToNotNullAttribute
                 return diags;
             }
 
@@ -78,27 +87,32 @@ namespace ContracsReSharperInterop
                 const ContractCategory contractCategory = ContractCategory.Requires;
 
                 var requiresExpressions = _invocationExpressionSyntaxNodes
+                    .EnsureItemNotNull()
                     .Where(item => _context.IsContractExpression(item.Expression as MemberAccessExpressionSyntax, contractCategory)); // find all "Contract.Requires(...)" 
 
-                var notNullParameterSymbols = requiresExpressions.GetNotNullIdentifierSyntax<IdentifierNameSyntax>()
-                    .Select(syntax => _context.SemanticModel.GetSymbolInfo(syntax).Symbol); // get the parameter symbol 
+                var notNullParameterSymbols = requiresExpressions
+                    .GetNotNullIdentifierSyntax<IdentifierNameSyntax>()
+                    .Select(syntax => _context.SemanticModel.GetSymbolInfo(syntax).Symbol as IParameterSymbol) // get the parameter symbol 
+                    .EnsureItemNotNull();
 
                 foreach (var notNullParameterSymbol in notNullParameterSymbols)
                 {
-                    var outerMethodSymbol = notNullParameterSymbol.ContainingSymbol as IMethodSymbol;
+                    var parameterSymbol = notNullParameterSymbol.GetAnnotationTargetSymbol();
+
+                    var outerMethodSymbol = parameterSymbol?.ContainingSymbol as IMethodSymbol;
                     if (outerMethodSymbol == null)
                         continue;
 
                     if (outerMethodSymbol.MethodKind == MethodKind.PropertySet)
                     {
                         var propertySymbol = outerMethodSymbol.AssociatedSymbol;
-                        var propertySyntax = propertySymbol.GetSyntaxNode<PropertyDeclarationSyntax>(_root);
+                        var propertySyntax = _root.GetSyntaxNode<PropertyDeclarationSyntax>(propertySymbol);
 
                         yield return GetDiagnostic(propertySyntax, contractCategory);
                     }
                     else
                     {
-                        var parameterSyntax = notNullParameterSymbol.GetSyntaxNode<ParameterSyntax>(_root);
+                        var parameterSyntax = _root.GetSyntaxNode<ParameterSyntax>(parameterSymbol);
 
                         yield return GetDiagnostic(parameterSyntax, contractCategory);
                     }
@@ -112,13 +126,13 @@ namespace ContracsReSharperInterop
                 const ContractCategory contractCategory = ContractCategory.Invariant;
 
                 var requiresExpressions = _invocationExpressionSyntaxNodes
-                    .Where(item => _context.IsContractExpression(item.Expression as MemberAccessExpressionSyntax, contractCategory)); // find all "Contract.Invariant(...)" 
+                    .Where(item => _context.IsContractExpression(item?.Expression as MemberAccessExpressionSyntax, contractCategory)); // find all "Contract.Invariant(...)" 
 
                 var notNullParameterSymbols = requiresExpressions.GetNotNullIdentifierSyntax<IdentifierNameSyntax>()
                     .Select(syntax => _context.SemanticModel.GetSymbolInfo(syntax).Symbol); // get the parameter symbol 
 
                 return notNullParameterSymbols
-                    .Select(notNullParameterSymbol => notNullParameterSymbol.GetSyntaxNode<SyntaxNode>(_root))
+                    .Select(notNullParameterSymbol => _root.GetSyntaxNode<SyntaxNode>(notNullParameterSymbol))
                     .Select(parameterSyntax => parameterSyntax.TryCast().Returning<Diag>()
                         .When<PropertyDeclarationSyntax>(syntax => GetDiagnostic(syntax, contractCategory))
                         .When<VariableDeclaratorSyntax>(syntax => GetDiagnostic(syntax, contractCategory))
@@ -133,21 +147,14 @@ namespace ContracsReSharperInterop
 
                 var ensuresExpressions = _invocationExpressionSyntaxNodes
                     .Where(item => _context.IsContractExpression(item.Expression as MemberAccessExpressionSyntax, contractCategory)) // find all "Contract.Ensures(...)" 
-                    .Where(IsContractResultExpression);
+                    .Where(item => item.IsContractResultExpression());
 
                 return ensuresExpressions
-                    .Select(ensuresExpression => ensuresExpression.Ancestors().OfType<MemberDeclarationSyntax>().FirstOrDefault())
+                    .Select(ensuresExpression => ensuresExpression?.Ancestors().OfType<MemberDeclarationSyntax>().FirstOrDefault())
                     .Select(outerMember => outerMember.TryCast().Returning<Diag>()
                         .When<MethodDeclarationSyntax>(syntax => GetDiagnostic(syntax, contractCategory))
                         .When<PropertyDeclarationSyntax>(syntax => GetDiagnostic(syntax, contractCategory))
                         .Result);
-            }
-
-            private static bool IsContractResultExpression(InvocationExpressionSyntax item)
-            {
-                var expressionSyntax = item.GetNotNullIdentifierSyntax<InvocationExpressionSyntax>()?.Expression as MemberAccessExpressionSyntax;
-
-                return expressionSyntax?.Name.Identifier.Text == "Result";
             }
 
             private static Diag GetDiagnostic(ParameterSyntax syntax, ContractCategory contractCategory)
@@ -158,10 +165,12 @@ namespace ContracsReSharperInterop
                 return new Diag(syntax.Identifier.GetLocation(), syntax.Identifier.Text, contractCategory);
             }
 
-            private static Diag GetDiagnostic(MethodDeclarationSyntax syntax, ContractCategory contractCategory)
+            private Diag GetDiagnostic(MethodDeclarationSyntax syntax, ContractCategory contractCategory)
             {
                 if (syntax?.AttributeLists.ContainsNotNullAttribute() != false)
                     return null;
+
+                syntax = FindDeclaringMemberOnBaseClass(syntax);
 
                 return new Diag(syntax.Identifier.GetLocation(), syntax.Identifier.Text, contractCategory);
             }
@@ -176,12 +185,34 @@ namespace ContracsReSharperInterop
                 return new Diag(fieldDeclarationSyntax.GetLocation(), syntax.ToString(), contractCategory);
             }
 
-            private static Diag GetDiagnostic(PropertyDeclarationSyntax syntax, ContractCategory contractCategory)
+            private Diag GetDiagnostic(PropertyDeclarationSyntax syntax, ContractCategory contractCategory)
             {
                 if (syntax?.AttributeLists.ContainsNotNullAttribute() != false)
                     return null;
 
+                syntax = FindDeclaringMemberOnBaseClass(syntax);
+
                 return new Diag(syntax.Identifier.GetLocation(), syntax.Identifier.Text, contractCategory);
+            }
+
+            [NotNull]
+            private PropertyDeclarationSyntax FindDeclaringMemberOnBaseClass([NotNull] PropertyDeclarationSyntax propertySyntax)
+            {
+                var propertySymbol = _context.SemanticModel.GetDeclaredSymbol(propertySyntax);
+
+                var baseClass = propertySymbol?.GetContractClassFor();
+
+                return _root.GetSyntaxNode<PropertyDeclarationSyntax>(baseClass?.FindDeclaringMemberOnBaseClass(propertySymbol)) ?? propertySyntax;
+            }
+
+            [NotNull]
+            private MethodDeclarationSyntax FindDeclaringMemberOnBaseClass([NotNull] MethodDeclarationSyntax methodSyntax)
+            {
+                var methodSymbol = _context.SemanticModel.GetDeclaredSymbol(methodSyntax);
+
+                var baseClass = methodSymbol?.GetContractClassFor();
+
+                return _root.GetSyntaxNode<MethodDeclarationSyntax>(baseClass?.FindDeclaringMemberOnBaseClass(methodSymbol)) ?? methodSyntax;
             }
         }
 

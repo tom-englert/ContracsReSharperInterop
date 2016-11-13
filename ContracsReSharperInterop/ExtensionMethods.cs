@@ -4,6 +4,8 @@
     using System.Collections.Generic;
     using System.Linq;
 
+    using JetBrains.Annotations;
+
     using Microsoft.CodeAnalysis;
     using Microsoft.CodeAnalysis.CSharp;
     using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -15,17 +17,30 @@
     {
         public static bool ContainsNotNullAttribute(this SyntaxList<AttributeListSyntax> attributeLists)
         {
-            return attributeLists.SelectMany(attr => attr.Attributes)
-                .Select(GetAttributeName)
-                .Any(name => string.Equals("NotNull", name, StringComparison.Ordinal));
+            return attributeLists.ContainsAttribute("NotNull");
         }
 
-        public static T GetSyntaxNode<T>(this ISymbol symbol, SyntaxNode root) where T : SyntaxNode
+        public static bool ContainsAttribute(this SyntaxList<AttributeListSyntax> attributeLists, string attributeName)
+        {
+            return attributeLists.SelectMany(attr => (attr?.Attributes).GetValueOrDefault())
+                .Select(GetAttributeName)
+                .Any(name => string.Equals(attributeName, name, StringComparison.Ordinal));
+        }
+
+        public static AttributeSyntax FindAttribute(this SyntaxList<AttributeListSyntax> attributeLists, string attributeName)
+        {
+            return attributeLists.SelectMany(attr => (attr?.Attributes).GetValueOrDefault())
+                .FirstOrDefault(attr => string.Equals(attributeName, GetAttributeName(attr), StringComparison.Ordinal));
+        }
+
+
+        public static T GetSyntaxNode<T>([NotNull] this SyntaxNode root, ISymbol symbol) where T : SyntaxNode
         {
             return symbol?.Locations
-                .Where(l => l.IsInSource)
-                .Select(l => l.SourceSpan)
-                .Select(s => root.FindNode(s))
+                .Where(l => l?.IsInSource ?? false)
+                .Select(l => l?.SourceSpan)
+                .EnsureItemNotNull()
+                .Select(s => root.FindNode(s.GetValueOrDefault()))
                 .FirstOrDefault() as T;
         }
 
@@ -33,33 +48,35 @@
         {
             var name = category.ToString();
 
-            if (expressionSyntax?.Name.ToString() != name)
+            if (expressionSyntax?.Name?.ToString() != name)
                 return false;
 
             var contractRequiresMethodSymbol = context.SemanticModel.GetSymbolInfo(expressionSyntax).Symbol as IMethodSymbol;
 
-            return contractRequiresMethodSymbol?.ToString().StartsWith("System.Diagnostics.Contracts.Contract." + name, StringComparison.Ordinal) == true;
+            return contractRequiresMethodSymbol?.ToString()?.StartsWith("System.Diagnostics.Contracts.Contract." + name, StringComparison.Ordinal) == true;
         }
 
-        public static IEnumerable<T> GetNotNullIdentifierSyntax<T>(this IEnumerable<InvocationExpressionSyntax> nodes)
+        [ItemNotNull]
+        [NotNull]
+        public static IEnumerable<T> GetNotNullIdentifierSyntax<T>([NotNull] this IEnumerable<InvocationExpressionSyntax> nodes)
             where T : ExpressionSyntax
         {
-            return nodes.Select(node => node.GetNotNullIdentifierSyntax<T>())
-                .Where(node => node != null); 
+            return nodes.Select(node => node?.GetNotNullIdentifierSyntax<T>())
+                .EnsureItemNotNull();
         }
 
-        public static T GetNotNullIdentifierSyntax<T>(this InvocationExpressionSyntax node)
+        private static T GetNotNullIdentifierSyntax<T>([NotNull] this InvocationExpressionSyntax node)
             where T : ExpressionSyntax
         {
             var arguments = node.ArgumentList.Arguments;
 
             return arguments.Count == 1 // ContractRequires has just one argument
-                ? arguments.Single().Expression.GetNotNullArgumentIdentifierSyntax<T>() 
+                ? arguments.Single()?.Expression.GetNotNullArgumentIdentifierSyntax<T>()
                 : null;
         }
 
 
-        public static T GetNotNullArgumentIdentifierSyntax<T>(this ExpressionSyntax argumentExpression)
+        private static T GetNotNullArgumentIdentifierSyntax<T>([NotNull] this ExpressionSyntax argumentExpression)
             where T : ExpressionSyntax
         {
             return argumentExpression.TryCast().Returning<T>()
@@ -80,16 +97,16 @@
             if (invocationExpressionSyntax == null)
                 return null;
 
-            var expressionValue = invocationExpressionSyntax.Expression.ToString();
+            var expressionValue = invocationExpressionSyntax.Expression?.ToString();
 
-            if (!nullStringChecks.Any(item => String.Equals(expressionValue, item, StringComparison.OrdinalIgnoreCase)))
+            if (!nullStringChecks.Any(item => string.Equals(expressionValue, item, StringComparison.OrdinalIgnoreCase)))
                 return null;
 
-            var arguments = invocationExpressionSyntax.ArgumentList.Arguments;
+            var arguments = invocationExpressionSyntax.ArgumentList?.Arguments ?? new SeparatedSyntaxList<ArgumentSyntax>();
             if (arguments.Count != 1)
                 return null;
 
-            return arguments.Single().Expression as T;
+            return arguments.Single()?.Expression as T;
         }
 
         private static T GetIdentifyerSyntaxOfNotNullArgument<T>(BinaryExpressionSyntax binaryArgumentExpression)
@@ -111,12 +128,22 @@
             return null;
         }
 
+        public static string GetNodeName([NotNull] this TypeSyntax node)
+        {
+            var nodeName = node.TryCast().Returning<string>()
+                .When<IdentifierNameSyntax>(syntax => syntax?.Identifier.Text)
+                .When<QualifiedNameSyntax>(syntax => syntax?.Right.Identifier.Text)
+                .Else(_ => null);
+
+            return nodeName;
+        }
+
         public static string GetAttributeName(this AttributeSyntax node)
         {
-            var nodeName = node.Name.TryCast().Returning<string>()
-                .When<IdentifierNameSyntax>(syntax => syntax.Identifier.Text)
-                .When<QualifiedNameSyntax>(syntax => syntax.Right.Identifier.Text)
-                .Else(_ => null);
+            var nodeName = node?.Name?.GetNodeName();
+
+            if (nodeName == null)
+                return null;
 
             const string attributeKeyName = "Attribute";
 
@@ -126,35 +153,132 @@
             return nodeName;
         }
 
-        public static CompilationUnitSyntax AddUsingDirective(this CompilationUnitSyntax root, string usingDirectiveName)
+        public static CompilationUnitSyntax AddUsingDirective([NotNull] this CompilationUnitSyntax root, string usingDirectiveName)
         {
             var usingSyntax = new[] { SyntaxFactory.UsingDirective(SyntaxFactory.IdentifierName(usingDirectiveName)) };
 
             return root.AddUsings(usingSyntax);
         }
 
-        public static bool HasUsingDirective(this SyntaxNode root, SyntaxNode item, string usingDirectiveName)
+        public static bool HasUsingDirective([NotNull] this SyntaxNode root, [NotNull] SyntaxNode item, string usingDirectiveName)
         {
             var ancestors = new HashSet<SyntaxNode>(item.Ancestors());
 
             var hasUsingDirective = root.DescendantNodes()
                 .Where(node => node.Kind() == SyntaxKind.UsingDirective)
                 .OfType<UsingDirectiveSyntax>()
-                .Where(x => ancestors.Contains(x.Parent))
-                .Any(node => node.Name.ToString().Equals(usingDirectiveName, StringComparison.Ordinal));
+                .Where(x => ancestors.Contains(x?.Parent))
+                .Any(node => string.Equals(node?.Name.ToString(), usingDirectiveName, StringComparison.Ordinal));
 
             return hasUsingDirective;
         }
 
-        public static bool HasAttributes(this SyntaxNode node)
+        public static bool HasAttributes([NotNull] this SyntaxNode node)
         {
-            return node.TryCast().Returning<bool>()
-                .When<ParameterSyntax>(item => item.AttributeLists.Any())
-                .When<PropertyDeclarationSyntax>(item => item.AttributeLists.Any())
-                .When<MethodDeclarationSyntax>(item => item.AttributeLists.Any())
-                .When<FieldDeclarationSyntax>(item => item.AttributeLists.Any())
-                .When<ClassDeclarationSyntax>(item => item.AttributeLists.Any())
-                .Else(item => false);
+            return node.TryCast().Returning<bool?>()
+                .When<ParameterSyntax>(item => item?.AttributeLists.Any())
+                .When<PropertyDeclarationSyntax>(item => item?.AttributeLists.Any())
+                .When<MethodDeclarationSyntax>(item => item?.AttributeLists.Any())
+                .When<FieldDeclarationSyntax>(item => item?.AttributeLists.Any())
+                .When<ClassDeclarationSyntax>(item => item?.AttributeLists.Any())
+                .Else(item => null) ?? false;
+        }
+
+        public static IPropertySymbol FindDeclaringMemberOnBaseClass(this INamedTypeSymbol baseClass, [NotNull] IPropertySymbol property)
+        {
+            return baseClass?.GetMembers().OfType<IPropertySymbol>().FirstOrDefault(p => PropertySignatureEquals(p, property));
+        }
+
+        private static bool PropertySignatureEquals(IPropertySymbol baseProperty, [NotNull] IPropertySymbol property)
+        {
+            if (baseProperty == null)
+                return false;
+
+            if (baseProperty.Name != property.Name)
+                return false;
+
+            if (!baseProperty.IsAbstract && baseProperty.ContainingType?.TypeKind != TypeKind.Interface)
+                return false;
+
+            return baseProperty.Type?.Equals(property.Type) ?? false;
+        }
+
+        public static IMethodSymbol FindDeclaringMemberOnBaseClass(this INamedTypeSymbol baseClass, [NotNull] IMethodSymbol method)
+        {
+            return baseClass?.GetMembers().OfType<IMethodSymbol>().FirstOrDefault(m => MethodSignatureEquals(m, method));
+        }
+
+        private static bool MethodSignatureEquals(IMethodSymbol baseMethod, [NotNull] IMethodSymbol method)
+        {
+            if (baseMethod == null)
+                return false;
+
+            if (baseMethod.Name != method.Name)
+                return false;
+
+            if (!baseMethod.IsAbstract && (baseMethod.ContainingType?.TypeKind != TypeKind.Interface))
+                return false;
+
+            if (baseMethod.ReturnType?.Equals(method.ReturnType) != true)
+                return false;
+
+            if (!baseMethod.TypeArguments.SequenceEqual(method.TypeArguments))
+                return false;
+
+            if (!baseMethod.Parameters.Select(p => p?.Type).SequenceEqual(method.Parameters.Select(p => p?.Type)))
+                return false;
+
+            return true;
+        }
+
+        public static INamedTypeSymbol GetContractClassFor([NotNull] this ISymbol symbol)
+        {
+            var contractClassForAttribute = symbol?
+                .ContainingType?
+                .GetAttributes()
+                .FirstOrDefault(a => a?.AttributeClass.Name == "ContractClassForAttribute");
+
+            return contractClassForAttribute?.ConstructorArguments.FirstOrDefault().Value as INamedTypeSymbol;
+        }
+
+        [ItemNotNull]
+        [NotNull]
+        public static IEnumerable<T> EnsureItemNotNull<T>(this IEnumerable<T> items)
+        {
+            if (items == null)
+                yield break;
+
+            foreach (var item in items)
+            {
+                if (item == null)
+                    continue;
+
+                yield return item;
+            }
+        }
+
+        public static IParameterSymbol GetAnnotationTargetSymbol([NotNull] this IParameterSymbol parameterSymbol)
+        {
+            var baseClass = parameterSymbol.GetContractClassFor();
+            if (baseClass == null)
+                return parameterSymbol;
+
+            var outerMethodSymbol = parameterSymbol.ContainingSymbol as IMethodSymbol;
+            if (outerMethodSymbol == null)
+                return parameterSymbol;
+
+            var baseMethod = baseClass.FindDeclaringMemberOnBaseClass(outerMethodSymbol);
+            if (baseMethod == null)
+                return parameterSymbol;
+
+            return baseMethod.Parameters[outerMethodSymbol.Parameters.IndexOf(parameterSymbol)];
+        }
+
+        public static bool IsContractResultExpression(this InvocationExpressionSyntax item)
+        {
+            var expressionSyntax = item.GetNotNullIdentifierSyntax<InvocationExpressionSyntax>()?.Expression as MemberAccessExpressionSyntax;
+
+            return expressionSyntax?.Name?.Identifier.Text == "Result";
         }
     }
 }
