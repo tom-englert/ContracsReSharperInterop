@@ -167,10 +167,13 @@ namespace ContracsReSharperInterop
 
             private Diag GetDiagnostic(MethodDeclarationSyntax syntax, ContractCategory contractCategory)
             {
-                if (syntax?.AttributeLists.ContainsNotNullAttribute() != false)
+                if (syntax == null)
                     return null;
 
                 syntax = FindDeclaringMemberOnBaseClass(syntax);
+
+                if (syntax.AttributeLists.ContainsNotNullAttribute())
+                    return null;
 
                 return new Diag(syntax.Identifier.GetLocation(), syntax.Identifier.Text, contractCategory);
             }
@@ -187,10 +190,13 @@ namespace ContracsReSharperInterop
 
             private Diag GetDiagnostic(PropertyDeclarationSyntax syntax, ContractCategory contractCategory)
             {
-                if (syntax?.AttributeLists.ContainsNotNullAttribute() != false)
+                if (syntax == null)
                     return null;
 
                 syntax = FindDeclaringMemberOnBaseClass(syntax);
+
+                if (syntax.AttributeLists.ContainsNotNullAttribute())
+                    return null;
 
                 return new Diag(syntax.Identifier.GetLocation(), syntax.Identifier.Text, contractCategory);
             }

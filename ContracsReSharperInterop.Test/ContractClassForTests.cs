@@ -58,6 +58,87 @@ namespace Test
         }
 
         [Fact]
+        public void AnnotationForContractClassMethodRequiresWithExplicitImplementationIsDoneOnInterface()
+        {
+            const string originalCode = @"
+using System.Diagnostics.Contracts;
+
+namespace Test
+{
+    [ContractClass(typeof(InterfaceContract))]
+    interface Interface
+    {
+        void Method(object arg);
+    }
+
+    [ContractClassFor(typeof(Interface))]
+    abstract class InterfaceContract : Interface
+    {
+        void Interface.Method(object argX)
+        {
+            Contract.Requires(argX != null);
+        }
+    }
+}";
+
+            var expected = new DiagnosticResult(9, 28, "arg");
+
+            VerifyCSharpDiagnostic(originalCode, expected);
+
+            const string fixedCode = @"
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    [ContractClass(typeof(InterfaceContract))]
+    interface Interface
+    {
+        void Method([NotNull] object arg);
+    }
+
+    [ContractClassFor(typeof(Interface))]
+    abstract class InterfaceContract : Interface
+    {
+        void Interface.Method(object argX)
+        {
+            Contract.Requires(argX != null);
+        }
+    }
+}";
+
+            VerifyCSharpFix(originalCode, fixedCode, null, true);
+        }
+
+        [Fact]
+        public void NoDiagnosticIsCreatedIfAnnotationForContractClassMethodRequiresIsAlreadyOnInterface()
+        {
+            const string originalCode = @"
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    [ContractClass(typeof(InterfaceContract))]
+    interface Interface
+    {
+        void Method([NotNull] object arg);
+    }
+
+    [ContractClassFor(typeof(Interface))]
+    abstract class InterfaceContract : Interface
+    {
+        public void Method(object argX)
+        {
+            Contract.Requires(argX != null);
+        }
+    }
+}";
+
+            VerifyCSharpDiagnostic(originalCode);
+        }
+
+        [Fact]
         public void AnnotationForContractClassMethodRequiresIsDoneOnCorrectInterfaceMethod()
         {
             const string originalCode = @"
@@ -203,7 +284,7 @@ namespace Test
     [ContractClassFor(typeof(Interface))]
     abstract class InterfaceContract : Interface
     {
-        object Property { 
+        public object Property { 
             get { return null; } 
             set { Contract.Requires(value != null); } 
         }
@@ -230,7 +311,61 @@ namespace Test
     [ContractClassFor(typeof(Interface))]
     abstract class InterfaceContract : Interface
     {
-        object Property { 
+        public object Property { 
+            get { return null; } 
+            set { Contract.Requires(value != null); } 
+        }
+    }
+}";
+
+            VerifyCSharpFix(originalCode, fixedCode, null, true);
+        }
+
+        [Fact]
+        public void AnnotationForContractClassPropertyRequiresIsDoneOnAbstractBaseClass()
+        {
+            const string originalCode = @"
+using System.Diagnostics.Contracts;
+
+namespace Test
+{
+    [ContractClass(typeof(InterfaceContract))]
+    abstract class Interface
+    {
+        public abstract object Property { get; set; }
+    }
+
+    [ContractClassFor(typeof(Interface))]
+    abstract class InterfaceContract : Interface
+    {
+        public override object Property { 
+            get { return null; } 
+            set { Contract.Requires(value != null); } 
+        }
+    }
+}";
+
+            var expected = new DiagnosticResult(9, 32, "Property");
+
+            VerifyCSharpDiagnostic(originalCode, expected);
+
+            const string fixedCode = @"
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    [ContractClass(typeof(InterfaceContract))]
+    abstract class Interface
+    {
+        [NotNull]
+        public abstract object Property { get; set; }
+    }
+
+    [ContractClassFor(typeof(Interface))]
+    abstract class InterfaceContract : Interface
+    {
+        public override object Property { 
             get { return null; } 
             set { Contract.Requires(value != null); } 
         }
@@ -257,7 +392,7 @@ namespace Test
     [ContractClassFor(typeof(Interface))]
     abstract class InterfaceContract : Interface
     {
-        object Property { 
+        public object Property { 
             get { Contract.Ensures(Contract.Result<object>() != null); return null; } 
             set { } 
         }
@@ -284,7 +419,7 @@ namespace Test
     [ContractClassFor(typeof(Interface))]
     abstract class InterfaceContract : Interface
     {
-        object Property { 
+        public object Property { 
             get { Contract.Ensures(Contract.Result<object>() != null); return null; } 
             set { } 
         }
@@ -292,6 +427,175 @@ namespace Test
 }";
 
             VerifyCSharpFix(originalCode, fixedCode, null, true);
+        }
+
+        [Fact]
+        public void AnnotationForContractClassPropertyEnsuresIsDoneOnAbstractBaseClass()
+        {
+            const string originalCode = @"
+using System.Diagnostics.Contracts;
+
+namespace Test
+{
+    [ContractClass(typeof(InterfaceContract))]
+    abstract class Interface
+    {
+        public abstract object Property { get; set; }
+    }
+
+    [ContractClassFor(typeof(Interface))]
+    abstract class InterfaceContract : Interface
+    {
+        public override object Property { 
+            get { Contract.Ensures(Contract.Result<object>() != null); return null; } 
+            set { } 
+        }
+    }
+}";
+
+            var expected = new DiagnosticResult(9, 32, "Property");
+
+            VerifyCSharpDiagnostic(originalCode, expected);
+
+            const string fixedCode = @"
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    [ContractClass(typeof(InterfaceContract))]
+    abstract class Interface
+    {
+        [NotNull]
+        public abstract object Property { get; set; }
+    }
+
+    [ContractClassFor(typeof(Interface))]
+    abstract class InterfaceContract : Interface
+    {
+        public override object Property { 
+            get { Contract.Ensures(Contract.Result<object>() != null); return null; } 
+            set { } 
+        }
+    }
+}";
+
+            VerifyCSharpFix(originalCode, fixedCode, null, true);
+        }
+
+
+        [Fact]
+        public void NoDiagnosticIsCreatedIfAnnotationForContractClassPropertyEnsuresIsAlreadyOnInterface()
+        {
+            const string originalCode = @"
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    [ContractClass(typeof(InterfaceContract))]
+    interface Interface
+    {
+        [NotNull]
+        object Property { get; set; }
+    }
+
+    [ContractClassFor(typeof(Interface))]
+    abstract class InterfaceContract : Interface
+    {
+        public object Property { 
+            get { Contract.Ensures(Contract.Result<object>() != null); return null; } 
+            set { } 
+        }
+    }}";
+
+            VerifyCSharpDiagnostic(originalCode);
+        }
+
+        [Fact]
+        public void AnnotationForContractClassMethodEnsuresIsDoneOnInterface()
+        {
+            const string originalCode = @"
+using System.Diagnostics.Contracts;
+
+namespace Test
+{
+    [ContractClass(typeof(InterfaceContract))]
+    interface Interface
+    {
+        object Method();
+    }
+
+    [ContractClassFor(typeof(Interface))]
+    abstract class InterfaceContract : Interface
+    {
+        public object Method()
+        {
+            Contract.Ensures(Contract.Result<object>() != null);
+            return null;
+        }
+    }
+}";
+
+            var expected = new DiagnosticResult(9, 16, "Method");
+
+            VerifyCSharpDiagnostic(originalCode, expected);
+
+            const string fixedCode = @"
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    [ContractClass(typeof(InterfaceContract))]
+    interface Interface
+    {
+        [NotNull]
+        object Method();
+    }
+
+    [ContractClassFor(typeof(Interface))]
+    abstract class InterfaceContract : Interface
+    {
+        public object Method()
+        {
+            Contract.Ensures(Contract.Result<object>() != null);
+            return null;
+        }
+    }
+}";
+
+            VerifyCSharpFix(originalCode, fixedCode, null, true);
+        }
+
+        [Fact]
+        public void NoDiagnosticIsCreatedIfAnnotationForContractClassMethodEnsuresIsAlreadyOnInterface()
+        {
+            const string originalCode = @"
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    [ContractClass(typeof(InterfaceContract))]
+    interface Interface
+    {
+        [NotNull]
+        object Method();
+    }
+
+    [ContractClassFor(typeof(Interface))]
+    abstract class InterfaceContract : Interface
+    {
+        public object Method()
+        {
+            Contract.Ensures(Contract.Result<object>() != null);
+            return null;
+        }
+    }
+}";
+
+            VerifyCSharpDiagnostic(originalCode);
         }
     }
 }

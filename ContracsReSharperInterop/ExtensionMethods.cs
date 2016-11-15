@@ -27,13 +27,6 @@
                 .Any(name => string.Equals(attributeName, name, StringComparison.Ordinal));
         }
 
-        public static AttributeSyntax FindAttribute(this SyntaxList<AttributeListSyntax> attributeLists, string attributeName)
-        {
-            return attributeLists.SelectMany(attr => (attr?.Attributes).GetValueOrDefault())
-                .FirstOrDefault(attr => string.Equals(attributeName, GetAttributeName(attr), StringComparison.Ordinal));
-        }
-
-
         public static T GetSyntaxNode<T>([NotNull] this SyntaxNode root, ISymbol symbol) where T : SyntaxNode
         {
             return symbol?.Locations
@@ -186,18 +179,30 @@
 
         public static IPropertySymbol FindDeclaringMemberOnBaseClass(this INamedTypeSymbol baseClass, [NotNull] IPropertySymbol property)
         {
-            return baseClass?.GetMembers().OfType<IPropertySymbol>().FirstOrDefault(p => PropertySignatureEquals(p, property));
+            if (baseClass == null)
+                return null;
+
+            if (baseClass.TypeKind == TypeKind.Interface)
+            {
+                return baseClass.GetMembers().OfType<IPropertySymbol>()
+                    .FirstOrDefault(m => property.ContainingType.FindImplementationForInterfaceMember(m)?.Equals(property) == true);
+            }
+
+            return baseClass.GetMembers().OfType<IPropertySymbol>().FirstOrDefault(p => PropertySignatureEquals(p, property));
         }
 
         private static bool PropertySignatureEquals(IPropertySymbol baseProperty, [NotNull] IPropertySymbol property)
         {
+            if (!property.IsOverride)
+                return false;
+
             if (baseProperty == null)
                 return false;
 
             if (baseProperty.Name != property.Name)
                 return false;
 
-            if (!baseProperty.IsAbstract && baseProperty.ContainingType?.TypeKind != TypeKind.Interface)
+            if (!baseProperty.IsAbstract)
                 return false;
 
             return baseProperty.Type?.Equals(property.Type) ?? false;
@@ -205,18 +210,30 @@
 
         public static IMethodSymbol FindDeclaringMemberOnBaseClass(this INamedTypeSymbol baseClass, [NotNull] IMethodSymbol method)
         {
-            return baseClass?.GetMembers().OfType<IMethodSymbol>().FirstOrDefault(m => MethodSignatureEquals(m, method));
+            if (baseClass == null)
+                return null;
+
+            if (baseClass.TypeKind == TypeKind.Interface)
+            {
+                return baseClass.GetMembers().OfType<IMethodSymbol>()
+                    .FirstOrDefault(m => method.ContainingType.FindImplementationForInterfaceMember(m)?.Equals(method) == true);
+            }
+
+            return baseClass.GetMembers().OfType<IMethodSymbol>().FirstOrDefault(m => MethodSignatureEquals(m, method));
         }
 
         private static bool MethodSignatureEquals(IMethodSymbol baseMethod, [NotNull] IMethodSymbol method)
         {
+            if (!method.IsOverride)
+                return false;
+
             if (baseMethod == null)
                 return false;
 
             if (baseMethod.Name != method.Name)
                 return false;
 
-            if (!baseMethod.IsAbstract && (baseMethod.ContainingType?.TypeKind != TypeKind.Interface))
+            if (!baseMethod.IsAbstract)
                 return false;
 
             if (baseMethod.ReturnType?.Equals(method.ReturnType) != true)
