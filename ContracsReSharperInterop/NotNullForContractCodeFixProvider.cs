@@ -66,45 +66,21 @@
         private static SyntaxNode AddNotNullAttribute(SyntaxNode node)
         {
             // a workaround for https://github.com/dotnet/roslyn/issues/15191
-            var leadingTrivia = GetLeadingNonWhitespaceTrivia(node);
+            var attributeListSyntax = CreateNotNullAttributeListSyntax();
 
-            if (leadingTrivia.HasValue)
-                node = node.WithLeadingTrivia();
-
-            node = node.TryCast().Returning<SyntaxNode>()
-                .When<ParameterSyntax>(item => item.WithAttributeLists(item.AttributeLists.Add(CreateNotNullAttributeListSyntax(leadingTrivia))))
-                .When<PropertyDeclarationSyntax>(item => item.WithAttributeLists(item.AttributeLists.Add(CreateNotNullAttributeListSyntax(leadingTrivia))))
-                .When<MethodDeclarationSyntax>(item => item.WithAttributeLists(item.AttributeLists.Add(CreateNotNullAttributeListSyntax(leadingTrivia))))
-                .When<FieldDeclarationSyntax>(item => item.WithAttributeLists(item.AttributeLists.Add(CreateNotNullAttributeListSyntax(leadingTrivia))))
-                .Else(item => item);
+            node = node.WithoutLeadingTrivia()
+                .WithAttribute(attributeListSyntax)
+                .WithLeadingTrivia(node.GetLeadingTrivia());
 
             return node;
         }
 
-        private static SyntaxTriviaList? GetLeadingNonWhitespaceTrivia(SyntaxNode node)
-        {
-            if (!node.HasLeadingTrivia || node.HasAttributes())
-                return null;
-
-            var trivia = node.GetLeadingTrivia();
-
-            if (trivia.Any(t => t.Kind() != SyntaxKind.WhitespaceTrivia))
-            {
-                return trivia;
-            }
-
-            return null;
-        }
-
-        private static AttributeListSyntax CreateNotNullAttributeListSyntax(SyntaxTriviaList? trivia)
+        private static AttributeListSyntax CreateNotNullAttributeListSyntax()
         {
             const string notnull = "NotNull";
 
             var separatedSyntaxList = SyntaxFactory.SeparatedList(new[] { SyntaxFactory.Attribute(SyntaxFactory.IdentifierName(notnull)) });
             var attributeList = SyntaxFactory.AttributeList(separatedSyntaxList);
-
-            if (trivia.HasValue)
-                attributeList = attributeList.WithLeadingTrivia(trivia.Value);
 
             return attributeList;
         }
