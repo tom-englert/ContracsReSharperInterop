@@ -261,12 +261,38 @@
 
         public static INamedTypeSymbol GetContractClassFor([NotNull] this ISymbol symbol)
         {
-            var contractClassForAttribute = symbol?
+            var contractClassForAttribute = symbol
                 .ContainingType?
                 .GetAttributes()
                 .FirstOrDefault(a => a?.AttributeClass.Name == "ContractClassForAttribute");
 
-            return contractClassForAttribute?.ConstructorArguments.FirstOrDefault().Value as INamedTypeSymbol;
+            var baseClass = contractClassForAttribute?.ConstructorArguments.FirstOrDefault().Value as INamedTypeSymbol;
+
+            if (baseClass?.IsGenericType == true)
+            {
+                baseClass = symbol.GetBaseClassAndInterfaces()
+                    .FirstOrDefault(x => x.IsGenericType 
+                        && (x.Name == baseClass.Name)
+                        && x.TypeArguments.Length == baseClass.TypeArguments.Length);
+            }
+
+            return baseClass;
+        }
+
+        [ItemNotNull]
+        private static IEnumerable<INamedTypeSymbol> GetBaseClassAndInterfaces([NotNull] this ISymbol symbol)
+        {
+            var type = symbol.ContainingType;
+
+            if (type?.BaseType == null)
+                yield break;
+
+            yield return type.BaseType;
+
+            foreach (var @interface in type.Interfaces)
+            {
+                yield return @interface;
+            }
         }
 
         [ItemNotNull]

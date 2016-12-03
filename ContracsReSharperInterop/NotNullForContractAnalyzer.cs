@@ -60,6 +60,7 @@ namespace ContracsReSharperInterop
             {
                 _context = context;
                 _root = root;
+                // ReSharper disable once AssignNullToNotNullAttribute
                 _invocationExpressionSyntaxNodes = root.DescendantNodesAndSelf()
                     .OfType<InvocationExpressionSyntax>()
                     .ToArray();
@@ -150,7 +151,7 @@ namespace ContracsReSharperInterop
                     .Where(item => item.IsContractResultExpression());
 
                 return ensuresExpressions
-                    .Select(ensuresExpression => ensuresExpression?.Ancestors().OfType<MemberDeclarationSyntax>().FirstOrDefault())
+                    .Select(ensuresExpression => ensuresExpression.Ancestors().OfType<MemberDeclarationSyntax>().FirstOrDefault())
                     .Select(outerMember => outerMember.TryCast().Returning<Diag>()
                         .When<MethodDeclarationSyntax>(syntax => GetDiagnostic(syntax, contractCategory))
                         .When<PropertyDeclarationSyntax>(syntax => GetDiagnostic(syntax, contractCategory))
