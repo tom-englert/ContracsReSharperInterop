@@ -34,6 +34,8 @@
   <ItemGroup>
     <Compile Include="ConditionalForContractInvariantAnalyzer.cs" />
     <Compile Include="ConditionalForContractInvariantCodeFixProvider.cs" />
+    <Compile Include="ContractForNotNullAnalyzer.cs" />
+    <Compile Include="ContractForNotNullCodeFixProvider.cs" />
     <Compile Include="NotNullForContractCodeFixProvider.cs" />
     <Compile Include="ContractCategory.cs" />
     <Compile Include="NotNullForContractAnalyzer.cs" />
@@ -96,8 +98,8 @@
       <HintPath>..\packages\System.Reflection.Metadata.1.1.0\lib\portable-net45+win8\System.Reflection.Metadata.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="TomsToolbox.Core, Version=1.0.52.0, Culture=neutral, PublicKeyToken=60b39f873a8e3fc2, processorArchitecture=MSIL">
-      <HintPath>..\packages\TomsToolbox.Core.1.0.52.0\lib\portable-net40+sl50+win+wpa81+wp80\TomsToolbox.Core.dll</HintPath>
+    <Reference Include="TomsToolbox.Core, Version=1.0.54.0, Culture=neutral, PublicKeyToken=60b39f873a8e3fc2, processorArchitecture=MSIL">
+      <HintPath>..\packages\TomsToolbox.Core.1.0.54.0\lib\portable-net40+sl50+win+wpa81+wp80\TomsToolbox.Core.dll</HintPath>
       <Private>True</Private>
     </Reference>
   </ItemGroup>

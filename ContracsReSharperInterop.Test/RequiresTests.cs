@@ -152,6 +152,47 @@ namespace Test
         }
 
         [Fact]
+        public void SimpleMethodWithNonEmptyStringAlternateNotation()
+        {
+            const string originalCode = @"
+using System;
+using System.Diagnostics.Contracts;
+
+namespace Test
+{
+    class Class
+    {
+        void Method(String arg)
+        {
+            Contract.Requires(!String.IsNullOrEmpty(arg));
+        }
+    }
+}";
+
+            var expected = new DiagnosticResult(9, 28, "arg");
+
+            VerifyCSharpDiagnostic(originalCode, expected);
+
+            const string fixedCode = @"
+using System;
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    class Class
+    {
+        void Method([NotNull] String arg)
+        {
+            Contract.Requires(!String.IsNullOrEmpty(arg));
+        }
+    }
+}";
+
+            VerifyCSharpFix(originalCode, fixedCode, null, true);
+        }
+
+        [Fact]
         public void SimpleMethodWithNotNullArgumentAndReverseComparison()
         {
             const string originalCode = @"
@@ -331,6 +372,61 @@ namespace Test
         }
 
         [Fact]
+        public void SimplePropertyWithNotNullArgumentAndExplicitTypeNames()
+        {
+            const string originalCode = @"
+using JetBrains.Annotations;
+
+namespace Test
+{
+    class Class
+    {
+        object Property
+        {
+            get
+            {
+                System.Diagnostics.Contracts.Contract.Ensures(System.Diagnostics.Contracts.Contract.Result<object>() != null);
+                return default(object);
+            }
+            set
+            {
+                System.Diagnostics.Contracts.Contract.Requires(value != null);
+            }
+        }
+    }
+}";
+
+            var expected = new DiagnosticResult(8, 16, "Property");
+
+            VerifyCSharpDiagnostic(originalCode, expected);
+
+            const string fixedCode = @"
+using JetBrains.Annotations;
+
+namespace Test
+{
+    class Class
+    {
+        [NotNull]
+        object Property
+        {
+            get
+            {
+                System.Diagnostics.Contracts.Contract.Ensures(System.Diagnostics.Contracts.Contract.Result<object>() != null);
+                return default(object);
+            }
+            set
+            {
+                System.Diagnostics.Contracts.Contract.Requires(value != null);
+            }
+        }
+    }
+}";
+
+            VerifyCSharpFix(originalCode, fixedCode, null, true);
+        }
+
+        [Fact]
         public void SimplePropertyWithNotNullArgumentThatAlreadyHasAnAttribute()
         {
             const string originalCode = @"
@@ -387,6 +483,20 @@ namespace Test
 }";
 
             VerifyCSharpDiagnostic(originalCode);
+        }
+    }
+}
+
+namespace Test
+{
+    using System;
+    using System.Diagnostics.Contracts;
+
+    class Class
+    {
+        void Method(String arg)
+        {
+            Contract.Requires(!String.IsNullOrEmpty(arg));
         }
     }
 }

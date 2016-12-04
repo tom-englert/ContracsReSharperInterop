@@ -32,21 +32,19 @@
             return symbol?.Locations
                 .Where(l => l?.IsInSource ?? false)
                 .Select(l => l?.SourceSpan)
-                .EnsureItemNotNull()
+                .WhereItemNotNull()
                 .Select(s => root.FindNode(s.GetValueOrDefault()))
                 .FirstOrDefault() as T;
         }
 
-        public static bool IsContractExpression(this SemanticModelAnalysisContext context, MemberAccessExpressionSyntax expressionSyntax, ContractCategory category)
+        public static bool IsContractExpression(this MemberAccessExpressionSyntax expressionSyntax, ContractCategory category)
         {
-            var name = category.ToString();
-
-            if (expressionSyntax?.Name?.ToString() != name)
+            if (expressionSyntax == null)
                 return false;
 
-            var contractRequiresMethodSymbol = context.SemanticModel.GetSymbolInfo(expressionSyntax).Symbol as IMethodSymbol;
+            var expected = new[] { category.ToString(), "Contract" };
 
-            return contractRequiresMethodSymbol?.ToString()?.StartsWith("System.Diagnostics.Contracts.Contract." + name, StringComparison.Ordinal) == true;
+            return expressionSyntax.ToString().Split('.').Reverse().Take(2).SequenceEqual(expected);
         }
 
         [ItemNotNull]
@@ -55,10 +53,10 @@
             where T : ExpressionSyntax
         {
             return nodes.Select(node => node?.GetNotNullIdentifierSyntax<T>())
-                .EnsureItemNotNull();
+                .WhereItemNotNull();
         }
 
-        private static T GetNotNullIdentifierSyntax<T>([NotNull] this InvocationExpressionSyntax node)
+        public static T GetNotNullIdentifierSyntax<T>([NotNull] this InvocationExpressionSyntax node)
             where T : ExpressionSyntax
         {
             var arguments = node.ArgumentList.Arguments;
@@ -67,7 +65,6 @@
                 ? arguments.Single()?.Expression.GetNotNullArgumentIdentifierSyntax<T>()
                 : null;
         }
-
 
         private static T GetNotNullArgumentIdentifierSyntax<T>([NotNull] this ExpressionSyntax argumentExpression)
             where T : ExpressionSyntax
@@ -105,8 +102,16 @@
         private static T GetIdentifyerSyntaxOfNotNullArgument<T>(BinaryExpressionSyntax binaryArgumentExpression)
             where T : ExpressionSyntax
         {
-            if (binaryArgumentExpression?.Kind() != SyntaxKind.NotEqualsExpression)
-                return null;
+            switch (binaryArgumentExpression?.Kind())
+            {
+                case SyntaxKind.NotEqualsExpression:
+                case SyntaxKind.GreaterThanExpression:
+                case SyntaxKind.LessThanExpression:
+                    break;
+
+                default:
+                    return null;
+            }
 
             if (binaryArgumentExpression.Left.Kind() == SyntaxKind.NullLiteralExpression)
             {
@@ -124,8 +129,11 @@
         public static string GetNodeName([NotNull] this TypeSyntax node)
         {
             var nodeName = node.TryCast().Returning<string>()
-                .When<IdentifierNameSyntax>(syntax => syntax?.Identifier.Text)
-                .When<QualifiedNameSyntax>(syntax => syntax?.Right.Identifier.Text)
+                // ReSharper disable PossibleNullReferenceException
+                .When<IdentifierNameSyntax>(syntax => syntax.Identifier.Text)
+                .When<QualifiedNameSyntax>(syntax => syntax.Right.Identifier.Text)
+                .When<PredefinedTypeSyntax>(syntax => syntax.Keyword.Text)
+                // ReSharper restore PossibleNullReferenceException
                 .Else(_ => null);
 
             return nodeName;
@@ -271,7 +279,7 @@
             if (baseClass?.IsGenericType == true)
             {
                 baseClass = symbol.GetBaseClassAndInterfaces()
-                    .FirstOrDefault(x => x.IsGenericType 
+                    .FirstOrDefault(x => x.IsGenericType
                         && (x.Name == baseClass.Name)
                         && x.TypeArguments.Length == baseClass.TypeArguments.Length);
             }
@@ -297,7 +305,7 @@
 
         [ItemNotNull]
         [NotNull]
-        public static IEnumerable<T> EnsureItemNotNull<T>(this IEnumerable<T> items)
+        public static IEnumerable<T> WhereItemNotNull<T>(this IEnumerable<T> items)
         {
             if (items == null)
                 yield break;
