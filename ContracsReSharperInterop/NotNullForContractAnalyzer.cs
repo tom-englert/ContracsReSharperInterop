@@ -3,6 +3,8 @@ namespace ContracsReSharperInterop
     using System;
     using System.Collections.Generic;
     using System.Collections.Immutable;
+    using System.Diagnostics;
+    using System.Diagnostics.CodeAnalysis;
     using System.Linq;
 
     using JetBrains.Annotations;
@@ -40,7 +42,7 @@ namespace ContracsReSharperInterop
             if (root == null)
                 return;
 
-            var diags = new Analyzer(context, root).Analyze();
+            var diags = new Analyzer(context.SemanticModel, root).Analyze();
 
             foreach (var diag in diags)
             {
@@ -50,17 +52,19 @@ namespace ContracsReSharperInterop
 
         private class Analyzer
         {
-            private readonly SemanticModelAnalysisContext _context;
+            [NotNull]
+            private readonly SemanticModel _semanticModel;
             [NotNull]
             private readonly SyntaxNode _root;
-            [NotNull]
-            private readonly ICollection<InvocationExpressionSyntax> _invocationExpressionSyntaxNodes;
+            [NotNull, ItemNotNull]
+            private readonly IReadOnlyCollection<InvocationExpressionSyntax> _invocationExpressionSyntaxNodes;
 
+            [SuppressMessage("ReSharper", "AssignNullToNotNullAttribute")]
             public Analyzer(SemanticModelAnalysisContext context, [NotNull] SyntaxNode root)
             {
                 _context = context;
                 _root = root;
-                // ReSharper disable once AssignNullToNotNullAttribute
+
                 _invocationExpressionSyntaxNodes = root.DescendantNodesAndSelf()
                     .OfType<InvocationExpressionSyntax>()
                     .ToArray();
@@ -88,12 +92,11 @@ namespace ContracsReSharperInterop
                 const ContractCategory contractCategory = ContractCategory.Requires;
 
                 var requiresExpressions = _invocationExpressionSyntaxNodes
-                    .WhereItemNotNull()
                     .Where(item => (item.Expression as MemberAccessExpressionSyntax).IsContractExpression(contractCategory)); // find all "Contract.Requires(...)" 
 
                 var notNullParameterSymbols = requiresExpressions
                     .GetNotNullIdentifierSyntax<IdentifierNameSyntax>()
-                    .Select(syntax => _context.SemanticModel.GetSymbolInfo(syntax).Symbol as IParameterSymbol) // get the parameter symbol 
+                    .Select(syntax => _semanticModel.GetSymbolInfo(syntax).Symbol as IParameterSymbol) // get the parameter symbol 
                     .WhereItemNotNull();
 
                 foreach (var notNullParameterSymbol in notNullParameterSymbols)
@@ -130,7 +133,7 @@ namespace ContracsReSharperInterop
                     .Where(item => (item?.Expression as MemberAccessExpressionSyntax).IsContractExpression(contractCategory)); // find all "Contract.Invariant(...)" 
 
                 var notNullParameterSymbols = requiresExpressions.GetNotNullIdentifierSyntax<IdentifierNameSyntax>()
-                    .Select(syntax => _context.SemanticModel.GetSymbolInfo(syntax).Symbol); // get the parameter symbol 
+                    .Select(syntax => _semanticModel.GetSymbolInfo(syntax).Symbol); // get the parameter symbol 
 
                 return notNullParameterSymbols
                     .Select(notNullParameterSymbol => _root.GetSyntaxNode<SyntaxNode>(notNullParameterSymbol))
@@ -205,7 +208,7 @@ namespace ContracsReSharperInterop
             [NotNull]
             private PropertyDeclarationSyntax FindDeclaringMemberOnBaseClass([NotNull] PropertyDeclarationSyntax propertySyntax)
             {
-                var propertySymbol = _context.SemanticModel.GetDeclaredSymbol(propertySyntax);
+                var propertySymbol = _semanticModel.GetDeclaredSymbol(propertySyntax);
 
                 var baseClass = propertySymbol?.GetContractClassFor();
 
@@ -215,7 +218,7 @@ namespace ContracsReSharperInterop
             [NotNull]
             private MethodDeclarationSyntax FindDeclaringMemberOnBaseClass([NotNull] MethodDeclarationSyntax methodSyntax)
             {
-                var methodSymbol = _context.SemanticModel.GetDeclaredSymbol(methodSyntax);
+                var methodSymbol = _semanticModel.GetDeclaredSymbol(methodSyntax);
 
                 var baseClass = methodSymbol?.GetContractClassFor();
 
