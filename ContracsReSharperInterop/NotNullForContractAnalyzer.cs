@@ -60,9 +60,9 @@ namespace ContracsReSharperInterop
             private readonly IReadOnlyCollection<InvocationExpressionSyntax> _invocationExpressionSyntaxNodes;
 
             [SuppressMessage("ReSharper", "AssignNullToNotNullAttribute")]
-            public Analyzer(SemanticModelAnalysisContext context, [NotNull] SyntaxNode root)
+            public Analyzer([NotNull] SemanticModel semanticModel, [NotNull] SyntaxNode root)
             {
-                _context = context;
+                _semanticModel = semanticModel;
                 _root = root;
 
                 _invocationExpressionSyntaxNodes = root.DescendantNodesAndSelf()

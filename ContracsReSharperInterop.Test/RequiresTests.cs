@@ -193,6 +193,47 @@ namespace Test
         }
 
         [Fact]
+        public void SimpleMethodWithNonEmptyStringLengthNotation()
+        {
+            const string originalCode = @"
+using System;
+using System.Diagnostics.Contracts;
+
+namespace Test
+{
+    class Class
+    {
+        void Method(string arg)
+        {
+            Contract.Requires(arg.Length > 0);
+        }
+    }
+}";
+
+            var expected = new DiagnosticResult(9, 28, "arg");
+
+            VerifyCSharpDiagnostic(originalCode, expected);
+
+            const string fixedCode = @"
+using System;
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    class Class
+    {
+        void Method([NotNull] string arg)
+        {
+            Contract.Requires(arg.Length > 0);
+        }
+    }
+}";
+
+            VerifyCSharpFix(originalCode, fixedCode, null, true);
+        }
+
+        [Fact]
         public void SimpleMethodWithNotNullArgumentAndReverseComparison()
         {
             const string originalCode = @"
@@ -494,9 +535,9 @@ namespace Test
 
     class Class
     {
-        void Method(String arg)
+        void Method(string arg)
         {
-            Contract.Requires(!String.IsNullOrEmpty(arg));
+            Contract.Requires(arg.Length > 0);
         }
     }
 }

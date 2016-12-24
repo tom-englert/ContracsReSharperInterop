@@ -102,7 +102,23 @@
         private static T GetIdentifyerSyntaxOfNotNullArgument<T>(BinaryExpressionSyntax binaryArgumentExpression)
             where T : ExpressionSyntax
         {
-            switch (binaryArgumentExpression?.Kind())
+            if (binaryArgumentExpression == null)
+                return null;
+
+            // if the identifier is part of any member access expression, e.g. arg.Length > 0, it must be != null!
+            if (binaryArgumentExpression.Left.Kind() == SyntaxKind.SimpleMemberAccessExpression)
+            {
+                var syntax = (MemberAccessExpressionSyntax)binaryArgumentExpression.Left;
+                return syntax.Expression as T;
+            }
+
+            if (binaryArgumentExpression.Right.Kind() == SyntaxKind.SimpleMemberAccessExpression)
+            {
+                var syntax = (MemberAccessExpressionSyntax)binaryArgumentExpression.Right;
+                return syntax.Expression as T;
+            }
+
+            switch (binaryArgumentExpression.Kind())
             {
                 case SyntaxKind.NotEqualsExpression:
                 case SyntaxKind.GreaterThanExpression:
