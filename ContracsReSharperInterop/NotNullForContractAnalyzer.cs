@@ -96,8 +96,8 @@ namespace ContracsReSharperInterop
 
                 var notNullParameterSymbols = requiresExpressions
                     .GetNotNullIdentifierSyntax<IdentifierNameSyntax>()
-                    .Select(syntax => _semanticModel.GetSymbolInfo(syntax).Symbol as IParameterSymbol) // get the parameter symbol 
-                    .WhereItemNotNull();
+                    .Select(syntax => _semanticModel.GetSymbolInfo(syntax).Symbol as IParameterSymbol)
+                    .Where(item => item != null);
 
                 foreach (var notNullParameterSymbol in notNullParameterSymbols)
                 {

@@ -9,7 +9,6 @@
     using Microsoft.CodeAnalysis;
     using Microsoft.CodeAnalysis.CSharp;
     using Microsoft.CodeAnalysis.CSharp.Syntax;
-    using Microsoft.CodeAnalysis.Diagnostics;
 
     using TomsToolbox.Core;
 
@@ -32,7 +31,6 @@
             return symbol?.Locations
                 .Where(l => l?.IsInSource ?? false)
                 .Select(l => l?.SourceSpan)
-                .WhereItemNotNull()
                 .Select(s => root.FindNode(s.GetValueOrDefault()))
                 .FirstOrDefault() as T;
         }
@@ -47,13 +45,12 @@
             return expressionSyntax.ToString().Split('.').Reverse().Take(2).SequenceEqual(expected);
         }
 
-        [ItemNotNull]
-        [NotNull]
+        [NotNull, ItemNotNull]
         public static IEnumerable<T> GetNotNullIdentifierSyntax<T>([NotNull] this IEnumerable<InvocationExpressionSyntax> nodes)
             where T : ExpressionSyntax
         {
             return nodes.Select(node => node?.GetNotNullIdentifierSyntax<T>())
-                .WhereItemNotNull();
+                .Where(item => item != null);
         }
 
         public static T GetNotNullIdentifierSyntax<T>([NotNull] this InvocationExpressionSyntax node)
@@ -316,22 +313,6 @@
             foreach (var @interface in type.Interfaces)
             {
                 yield return @interface;
-            }
-        }
-
-        [ItemNotNull]
-        [NotNull]
-        public static IEnumerable<T> WhereItemNotNull<T>(this IEnumerable<T> items)
-        {
-            if (items == null)
-                yield break;
-
-            foreach (var item in items)
-            {
-                if (item == null)
-                    continue;
-
-                yield return item;
             }
         }
 

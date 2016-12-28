@@ -63,7 +63,7 @@
 
             var newRoot = node.TryCast().Returning<CompilationUnitSyntax>()
                 .When<ParameterSyntax>(syntax => AddRequires(root, semanticModel, syntax))
-                .When<MethodDeclarationSyntax>(syntax => AddRequires(root, semanticModel, syntax))
+                .When<MethodDeclarationSyntax>(syntax => AddEnsures(root, semanticModel, syntax))
                 .Else(syntax => root);
 
             Debug.Assert(newRoot != null);
@@ -103,7 +103,7 @@
             return root.ReplaceNode(methodSyntax.Body, methodSyntax.Body.WithStatements(statements));
         }
 
-        private static CompilationUnitSyntax AddRequires(CompilationUnitSyntax root, SemanticModel semanticModel, [NotNull] MethodDeclarationSyntax methodSyntax)
+        private static CompilationUnitSyntax AddEnsures(CompilationUnitSyntax root, SemanticModel semanticModel, [NotNull] MethodDeclarationSyntax methodSyntax)
         {
             var statements = methodSyntax.Body.Statements;
 
@@ -112,7 +112,7 @@
                 .TakeWhile(s => (s?.Expression as MemberAccessExpressionSyntax).IsContractExpression(ContractCategory.Requires))
                 .Count();
 
-            var statementSyntax = SyntaxFactory.ParseStatement($"Contract.Ensures(Contract.Result<{methodSyntax.ReturnType.GetNodeName()}>() != null);\r\n")
+            var statementSyntax = SyntaxFactory.ParseStatement($"Contract.Ensures(Contract.Result<{methodSyntax.ReturnType}>() != null);\r\n")
                 .WithLeadingTrivia(statements.FirstOrDefault()?.GetLeadingTrivia());
 
             statements = statements.Insert(index, statementSyntax);

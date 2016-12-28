@@ -91,19 +91,16 @@ namespace ContracsReSharperInterop
                 const ContractCategory contractCategory = ContractCategory.Requires;
 
                 var requiresExpressions = _invocationExpressionSyntaxNodes
-                    .WhereItemNotNull()
                     .Where(item => (item.Expression as MemberAccessExpressionSyntax).IsContractExpression(contractCategory)); // find all "Contract.Requires(...)" 
 
                 var parametersWithNotNullContract = requiresExpressions
                     .GetNotNullIdentifierSyntax<IdentifierNameSyntax>()
                     .Select(syntax => _context.SemanticModel.GetSymbolInfo(syntax).Symbol as IParameterSymbol) // get the parameter symbol 
-                    .Select(symbol => _root.GetSyntaxNode<ParameterSyntax>(symbol))
-                    .WhereItemNotNull();
+                    .Select(symbol => _root.GetSyntaxNode<ParameterSyntax>(symbol));
 
                 var parametersWithNotNullAnnotation = _methodDeclarationSyntaxNodes
                     .SelectMany(node => node.ParameterList.Parameters)
-                    .Where(parameter => parameter?.AttributeLists.ContainsNotNullAttribute() == true)
-                    .WhereItemNotNull();
+                    .Where(parameter => parameter?.AttributeLists.ContainsNotNullAttribute() == true);
 
                 var parametersWithMissingContracts = parametersWithNotNullAnnotation.Except(parametersWithNotNullContract);
 
@@ -124,15 +121,13 @@ namespace ContracsReSharperInterop
                     .Where(item => item.IsContractResultExpression());
 
                 var methodsWithContractEnsures = ensuresExpressions
-                    .Select(ensuresExpression => ensuresExpression.Ancestors().OfType<MemberDeclarationSyntax>().FirstOrDefault() as MethodDeclarationSyntax)
-                    .WhereItemNotNull();
+                    .Select(ensuresExpression => ensuresExpression.Ancestors().OfType<MemberDeclarationSyntax>().FirstOrDefault() as MethodDeclarationSyntax);
 
                 var methodsWithNotNullAnnotation = _methodDeclarationSyntaxNodes
                     .Where(method => method.AttributeLists.ContainsNotNullAttribute());
 
                 var methodsWithMissingContractEnsures = methodsWithNotNullAnnotation
-                    .Except(methodsWithContractEnsures)
-                    .WhereItemNotNull();
+                    .Except(methodsWithContractEnsures);
 
                 foreach (var methodSyntax in methodsWithMissingContractEnsures)
                 {
