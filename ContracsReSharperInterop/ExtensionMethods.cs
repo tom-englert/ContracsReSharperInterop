@@ -33,9 +33,9 @@ namespace ContracsReSharperInterop
             return symbol?.DeclaringSyntaxReferences.FirstOrDefault(r => r.SyntaxTree.GetRoot() == root)?.GetSyntax() as T;
         }
 
-        public static bool IsContractExpression(this MemberAccessExpressionSyntax expressionSyntax, ContractCategory category)
+        public static bool IsContractExpression(this ExpressionSyntax expressionSyntax, ContractCategory category)
         {
-            return expressionSyntax.GetContractCategory() == category;
+            return (expressionSyntax as MemberAccessExpressionSyntax)?.GetContractCategory() == category;
         }
 
         public static ContractCategory GetContractCategory(this MemberAccessExpressionSyntax expressionSyntax)
@@ -58,10 +58,9 @@ namespace ContracsReSharperInterop
         }
 
         [NotNull, ItemNotNull]
-        public static IEnumerable<T> GetNotNullArgumentIdentifierSyntaxNodes<T>([NotNull] this IEnumerable<InvocationExpressionSyntax> nodes)
-            where T : ExpressionSyntax
+        public static IEnumerable<IdentifierNameSyntax> GetNotNullArgumentIdentifierSyntaxNodes([NotNull] this IEnumerable<InvocationExpressionSyntax> nodes)
         {
-            return nodes.Select(node => node?.GetNotNullArgumentIdentifierSyntax<T>())
+            return nodes.Select(node => node?.GetNotNullArgumentIdentifierSyntax<IdentifierNameSyntax>())
                 .Where(item => item != null);
         }
 
@@ -350,9 +349,9 @@ namespace ContracsReSharperInterop
             }
         }
 
-        public static IParameterSymbol GetAnnotationTargetSymbol([NotNull] this IParameterSymbol parameterSymbol)
+        public static IParameterSymbol GetTargetSymbolForAnnotation(this IParameterSymbol parameterSymbol)
         {
-            var baseClass = parameterSymbol.GetContractClassFor();
+            var baseClass = parameterSymbol?.GetContractClassFor();
             if (baseClass == null)
                 return parameterSymbol;
 
@@ -365,6 +364,26 @@ namespace ContracsReSharperInterop
                 return parameterSymbol;
 
             return baseMethod.Parameters[outerMethodSymbol.Parameters.IndexOf(parameterSymbol)];
+        }
+
+        [NotNull]
+        public static PropertyDeclarationSyntax FindDeclaringMemberOnBaseClass([NotNull] this PropertyDeclarationSyntax propertySyntax, [NotNull] SemanticModel semanticModel, [NotNull] SyntaxNode root)
+        {
+            var propertySymbol = semanticModel.GetDeclaredSymbol(propertySyntax);
+
+            var baseClass = propertySymbol?.GetContractClassFor();
+
+            return root.GetSyntaxNode<PropertyDeclarationSyntax>(baseClass?.FindDeclaringMemberOnBaseClass(propertySymbol)) ?? propertySyntax;
+        }
+
+        [NotNull]
+        public static MethodDeclarationSyntax FindDeclaringMemberOnBaseClass([NotNull] this MethodDeclarationSyntax methodSyntax, [NotNull] SemanticModel semanticModel, [NotNull] SyntaxNode root)
+        {
+            var methodSymbol = semanticModel.GetDeclaredSymbol(methodSyntax);
+
+            var baseClass = methodSymbol?.GetContractClassFor();
+
+            return root.GetSyntaxNode<MethodDeclarationSyntax>(baseClass?.FindDeclaringMemberOnBaseClass(methodSymbol)) ?? methodSyntax;
         }
     }
 }
