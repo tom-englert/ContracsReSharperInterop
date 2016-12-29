@@ -254,6 +254,20 @@
             return baseClass.GetMembers().OfType<IMethodSymbol>().FirstOrDefault(m => MethodSignatureEquals(m, method));
         }
 
+        public static IMethodSymbol FindImplementingMemberOnDerivedClass(this INamedTypeSymbol derivedClass, [NotNull] IMethodSymbol method)
+        {
+            if (derivedClass == null)
+                return null;
+
+            if (method.ContainingType?.TypeKind == TypeKind.Interface)
+            {
+                return derivedClass.FindImplementationForInterfaceMember(method) as IMethodSymbol;
+            }
+
+            return derivedClass.GetMembers().OfType<IMethodSymbol>().FirstOrDefault(m => MethodSignatureEquals(m, method));
+        }
+
+
         private static bool MethodSignatureEquals(IMethodSymbol baseMethod, [NotNull] IMethodSymbol method)
         {
             if (!method.IsOverride)
@@ -282,10 +296,11 @@
 
         public static INamedTypeSymbol GetContractClassFor([NotNull] this ISymbol symbol)
         {
-            var contractClassForAttribute = symbol
-                .ContainingType?
+            var containingType = symbol as INamedTypeSymbol ?? symbol.ContainingType;
+
+            var contractClassForAttribute = containingType?
                 .GetAttributes()
-                .FirstOrDefault(a => a?.AttributeClass.Name == "ContractClassForAttribute");
+                .FirstOrDefault(a => a?.AttributeClass?.Name == "ContractClassForAttribute");
 
             var baseClass = contractClassForAttribute?.ConstructorArguments.FirstOrDefault().Value as INamedTypeSymbol;
 
@@ -293,12 +308,20 @@
             {
                 baseClass = symbol.GetBaseClassAndInterfaces()
                     .FirstOrDefault(x => x.IsGenericType
-                        && (x.Name == baseClass.Name)
+                        && x.Name == baseClass.Name
                         && x.TypeArguments.Length == baseClass.TypeArguments.Length);
             }
 
             return baseClass;
         }
+
+        public static INamedTypeSymbol GetContractClass([NotNull] this ISymbol symbol)
+        {
+            var containingType = symbol as INamedTypeSymbol ?? symbol.ContainingType;
+
+            return containingType?.ContainingNamespace?.GetTypeMembers().FirstOrDefault(type => Equals(type?.GetContractClassFor(), containingType));
+        }
+
 
         [ItemNotNull]
         private static IEnumerable<INamedTypeSymbol> GetBaseClassAndInterfaces([NotNull] this ISymbol symbol)

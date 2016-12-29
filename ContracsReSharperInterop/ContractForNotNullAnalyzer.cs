@@ -40,7 +40,7 @@ namespace ContracsReSharperInterop
             if (root == null)
                 return;
 
-            var diags = new Analyzer(context, root).Analyze();
+            var diags = new Analyzer(context.SemanticModel, root).Analyze();
 
             foreach (var diag in diags)
             {
@@ -50,7 +50,7 @@ namespace ContracsReSharperInterop
 
         private class Analyzer
         {
-            private readonly SemanticModelAnalysisContext _context;
+            private readonly SemanticModel _semanticModel;
             [NotNull]
             private readonly SyntaxNode _root;
             [NotNull, ItemNotNull]
@@ -58,9 +58,9 @@ namespace ContracsReSharperInterop
             [NotNull, ItemNotNull]
             private readonly ICollection<MethodDeclarationSyntax> _methodDeclarationSyntaxNodes;
 
-            public Analyzer(SemanticModelAnalysisContext context, [NotNull] SyntaxNode root)
+            public Analyzer(SemanticModel semanticModel, [NotNull] SyntaxNode root)
             {
-                _context = context;
+                _semanticModel = semanticModel;
                 _root = root;
                 // ReSharper disable once AssignNullToNotNullAttribute
                 _invocationExpressionSyntaxNodes = root.DescendantNodesAndSelf()
@@ -95,8 +95,10 @@ namespace ContracsReSharperInterop
 
                 var parametersWithNotNullContract = requiresExpressions
                     .GetNotNullIdentifierSyntax<IdentifierNameSyntax>()
-                    .Select(syntax => _context.SemanticModel.GetSymbolInfo(syntax).Symbol as IParameterSymbol) // get the parameter symbol 
-                    .Select(symbol => _root.GetSyntaxNode<ParameterSyntax>(symbol));
+                    .Select(syntax => _semanticModel.GetSymbolInfo(syntax).Symbol as IParameterSymbol) // get the parameter symbol 
+                    .Select(symbol => symbol?.GetAnnotationTargetSymbol())
+                    .Select(symbol => _root.GetSyntaxNode<ParameterSyntax>(symbol))
+                    .Where(parameter => parameter != null);
 
                 var parametersWithNotNullAnnotation = _methodDeclarationSyntaxNodes
                     .SelectMany(node => node.ParameterList.Parameters)
@@ -121,7 +123,9 @@ namespace ContracsReSharperInterop
                     .Where(item => item.IsContractResultExpression());
 
                 var methodsWithContractEnsures = ensuresExpressions
-                    .Select(ensuresExpression => ensuresExpression.Ancestors().OfType<MemberDeclarationSyntax>().FirstOrDefault() as MethodDeclarationSyntax);
+                    .Select(ensuresExpression => ensuresExpression.Ancestors().OfType<MemberDeclarationSyntax>().FirstOrDefault() as MethodDeclarationSyntax)
+                    .Select(FindDeclaringMemberOnBaseClass)
+                    .Where(method => method != null);
 
                 var methodsWithNotNullAnnotation = _methodDeclarationSyntaxNodes
                     .Where(method => method.AttributeLists.ContainsNotNullAttribute());
@@ -133,6 +137,16 @@ namespace ContracsReSharperInterop
                 {
                     yield return GetDiagnostic(methodSyntax, contractCategory);
                 }
+            }
+
+            [NotNull]
+            private MethodDeclarationSyntax FindDeclaringMemberOnBaseClass([NotNull] MethodDeclarationSyntax methodSyntax)
+            {
+                var methodSymbol = _semanticModel.GetDeclaredSymbol(methodSyntax);
+
+                var baseClass = methodSymbol?.GetContractClassFor();
+
+                return _root.GetSyntaxNode<MethodDeclarationSyntax>(baseClass?.FindDeclaringMemberOnBaseClass(methodSymbol)) ?? methodSyntax;
             }
 
             private static Diag GetDiagnostic(ParameterSyntax syntax, ContractCategory contractCategory)

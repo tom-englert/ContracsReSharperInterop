@@ -105,7 +105,11 @@
 
         private static CompilationUnitSyntax AddEnsures(CompilationUnitSyntax root, SemanticModel semanticModel, [NotNull] MethodDeclarationSyntax methodSyntax)
         {
-            var statements = methodSyntax.Body.Statements;
+            var body = methodSyntax.Body;
+            if (body == null)
+                return AddEnsuresOnContractClass(root, semanticModel, methodSyntax);
+
+            var statements = body.Statements;
 
             var index = statements
                 .Select(s => (s as ExpressionStatementSyntax)?.Expression as InvocationExpressionSyntax)
@@ -117,7 +121,23 @@
 
             statements = statements.Insert(index, statementSyntax);
 
-            return root.ReplaceNode(methodSyntax.Body, methodSyntax.Body.WithStatements(statements));
+            return root.ReplaceNode(body, body.WithStatements(statements));
+        }
+
+        private static CompilationUnitSyntax AddEnsuresOnContractClass([NotNull] CompilationUnitSyntax root, [NotNull] SemanticModel semanticModel, MethodDeclarationSyntax methodSyntax)
+        {
+            var methodSymbol = semanticModel.GetDeclaredSymbol(methodSyntax);
+
+            var contractClass = methodSymbol?.GetContractClass();
+
+            methodSyntax = root.GetSyntaxNode<MethodDeclarationSyntax>(contractClass?.FindImplementingMemberOnDerivedClass(methodSymbol));
+
+            if (methodSyntax != null)
+            {
+                return AddEnsures(root, semanticModel, methodSyntax);
+            }
+
+            return root;
         }
     }
 }

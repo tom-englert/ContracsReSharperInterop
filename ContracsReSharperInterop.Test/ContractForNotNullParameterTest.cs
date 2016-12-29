@@ -178,23 +178,20 @@ namespace Test
     interface Interface
     {
         [NotNull]
-        object Method([NotNull] object arg, [NotNull] object arg2);
+        object Method();
     }
 
     [ContractClassFor(typeof(Interface))]
     abstract class InterfaceContract : Interface
     {
-        public object Method(object arg, object arg2)
+        public object Method()
         {
-            Contract.Requires(arg != null);
-            Contract.Requires(arg2 != null);
-
             return null;
         }
     }
 }";
 
-            var expected = new DiagnosticResult(10, 16, "Method");
+            var expected = new DiagnosticResult(11, 16, "Method");
 
             VerifyCSharpDiagnostic(originalCode, expected);
 
@@ -208,24 +205,51 @@ namespace Test
     interface Interface
     {
         [NotNull]
-        object Method([NotNull] object arg, [NotNull] object arg2);
+        object Method();
     }
 
     [ContractClassFor(typeof(Interface))]
     abstract class InterfaceContract : Interface
     {
-        public object Method(object arg, object arg2)
+        public object Method()
         {
-            Contract.Requires(arg != null);
-            Contract.Requires(arg2 != null);
             Contract.Ensures(Contract.Result<object>() != null);
-
             return null;
         }
     }
 }";
 
             VerifyCSharpFix(originalCode, fixedCode, null, true);
+        }
+
+        [Fact]
+        public void NoDiagnosticIsGeneratedOnContractClassIfResultHasAlreadyContract()
+        {
+            const string originalCode = @"
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    [ContractClass(typeof(InterfaceContract))]
+    interface Interface
+    {
+        [NotNull]
+        object Method();
+    }
+
+    [ContractClassFor(typeof(Interface))]
+    abstract class InterfaceContract : Interface
+    {
+        public object Method()
+        {
+            Contract.Ensures(Contract.Result<object>() != null);
+            return null;
+        }
+    }
+}";
+
+            VerifyCSharpDiagnostic(originalCode);
         }
 
         [Fact]
