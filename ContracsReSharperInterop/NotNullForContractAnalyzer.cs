@@ -3,7 +3,6 @@ namespace ContracsReSharperInterop
     using System;
     using System.Collections.Generic;
     using System.Collections.Immutable;
-    using System.Diagnostics;
     using System.Diagnostics.CodeAnalysis;
     using System.Linq;
 
@@ -27,7 +26,7 @@ namespace ContracsReSharperInterop
 
         private const string Category = "CodeContracts";
 
-        private static readonly DiagnosticDescriptor _rule = new DiagnosticDescriptor(DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Warning, true, Description);
+        private static readonly DiagnosticDescriptor _rule = new DiagnosticDescriptor(DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Warning, true, Description, Utils.HelpLinkUri);
 
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(_rule);
 
@@ -70,8 +69,7 @@ namespace ContracsReSharperInterop
                     .ToArray();
             }
 
-            [ItemNotNull]
-            [NotNull]
+            [NotNull, ItemNotNull]
             public IEnumerable<Diag> Analyze()
             {
                 var diags = AnalyzeRequires()
