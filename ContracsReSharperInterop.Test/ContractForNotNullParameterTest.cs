@@ -308,6 +308,7 @@ namespace Test
 namespace Test1
 {
     using System.Diagnostics.Contracts;
+
     using JetBrains.Annotations;
 
     [ContractClass(typeof(InterfaceContract))]

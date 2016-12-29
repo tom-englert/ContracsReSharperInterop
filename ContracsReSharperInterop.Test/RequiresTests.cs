@@ -530,7 +530,6 @@ namespace Test
 
 namespace Test
 {
-    using System;
     using System.Diagnostics.Contracts;
 
     class Class

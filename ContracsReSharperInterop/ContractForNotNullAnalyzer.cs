@@ -12,8 +12,6 @@ namespace ContracsReSharperInterop
     using Microsoft.CodeAnalysis.CSharp.Syntax;
     using Microsoft.CodeAnalysis.Diagnostics;
 
-    using TomsToolbox.Core;
-
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     internal class ContractForNotNullAnalyzer : DiagnosticAnalyzer
     {

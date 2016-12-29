@@ -198,15 +198,19 @@ namespace ContracsReSharperInterop
             return hasUsingDirective;
         }
 
-        public static SyntaxNode WithAttribute([NotNull] this SyntaxNode node, AttributeListSyntax attributeListSyntax)
+        public static T WithAttribute<T>([NotNull] this T node, AttributeListSyntax attributeListSyntax)
+            where T : SyntaxNode
         {
-            return node.TryCast().Returning<SyntaxNode>()
+            var result = ((SyntaxNode)node).TryCast().Returning<SyntaxNode>()
                 .When<ParameterSyntax>(item => item.WithAttributeLists(item.AttributeLists.Add(attributeListSyntax)))
                 .When<PropertyDeclarationSyntax>(item => item.WithAttributeLists(item.AttributeLists.Add(attributeListSyntax)))
                 .When<MethodDeclarationSyntax>(item => item.WithAttributeLists(item.AttributeLists.Add(attributeListSyntax)))
                 .When<FieldDeclarationSyntax>(item => item.WithAttributeLists(item.AttributeLists.Add(attributeListSyntax)))
                 .When<ClassDeclarationSyntax>(item => item.WithAttributeLists(item.AttributeLists.Add(attributeListSyntax)))
-                .Else(item => item);
+                .When<InterfaceDeclarationSyntax>(item => item.WithAttributeLists(item.AttributeLists.Add(attributeListSyntax)))
+                .ElseThrow("unsupported node: " + node);
+
+            return (T)result;
         }
 
         public static IPropertySymbol FindDeclaringMemberOnBaseClass(this INamedTypeSymbol baseClass, [NotNull] IPropertySymbol property)
@@ -384,6 +388,11 @@ namespace ContracsReSharperInterop
             var baseClass = methodSymbol?.GetContractClassFor();
 
             return root.GetSyntaxNode<MethodDeclarationSyntax>(baseClass?.FindDeclaringMemberOnBaseClass(methodSymbol)) ?? methodSyntax;
+        }
+
+        public static bool IsAbstractMember(this SyntaxNode node)
+        {
+            return node?.ChildTokens().Any(n => n.IsKind(SyntaxKind.AbstractKeyword)) ?? false;
         }
     }
 }
