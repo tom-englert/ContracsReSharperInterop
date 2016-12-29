@@ -89,7 +89,7 @@
             var index = statements
                 .Select(s => (s as ExpressionStatementSyntax)?.Expression as InvocationExpressionSyntax)
                 .TakeWhile(s => (s?.Expression as MemberAccessExpressionSyntax).IsContractExpression(ContractCategory.Requires))
-                .Select(p => p?.GetNotNullIdentifierSyntax<IdentifierNameSyntax>())
+                .Select(p => p?.GetNotNullArgumentIdentifierSyntax<IdentifierNameSyntax>())
                 .Select(p => semanticModel.GetSymbolInfo(p).Symbol)
                 .Select(p => p?.Name)
                 .TakeWhile(n => parametersBefore.Contains(n))

@@ -93,7 +93,7 @@ namespace ContracsReSharperInterop
                     .Where(item => (item.Expression as MemberAccessExpressionSyntax).IsContractExpression(contractCategory)); // find all "Contract.Requires(...)" 
 
                 var notNullParameterSymbols = requiresExpressions
-                    .GetNotNullIdentifierSyntax<IdentifierNameSyntax>()
+                    .GetNotNullArgumentIdentifierSyntaxNodes<IdentifierNameSyntax>()
                     .Select(syntax => _semanticModel.GetSymbolInfo(syntax).Symbol as IParameterSymbol)
                     .Where(item => item != null);
 
@@ -130,7 +130,7 @@ namespace ContracsReSharperInterop
                 var requiresExpressions = _invocationExpressionSyntaxNodes
                     .Where(item => (item?.Expression as MemberAccessExpressionSyntax).IsContractExpression(contractCategory)); // find all "Contract.Invariant(...)" 
 
-                var notNullParameterSymbols = requiresExpressions.GetNotNullIdentifierSyntax<IdentifierNameSyntax>()
+                var notNullParameterSymbols = requiresExpressions.GetNotNullArgumentIdentifierSyntaxNodes<IdentifierNameSyntax>()
                     .Select(syntax => _semanticModel.GetSymbolInfo(syntax).Symbol); // get the parameter symbol 
 
                 return notNullParameterSymbols

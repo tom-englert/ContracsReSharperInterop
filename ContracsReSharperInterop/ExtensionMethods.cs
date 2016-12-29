@@ -1,4 +1,6 @@
-﻿namespace ContracsReSharperInterop
+﻿#pragma warning disable ContracsReSharperInterop_ContractForNotNull // Element with [NotNull] attribute does not have a corresponding not-null contract.
+
+namespace ContracsReSharperInterop
 {
     using System;
     using System.Collections.Generic;
@@ -28,32 +30,42 @@
 
         public static T GetSyntaxNode<T>([NotNull] this SyntaxNode root, ISymbol symbol) where T : SyntaxNode
         {
-            return symbol?.Locations
-                .Where(l => l?.IsInSource ?? false)
-                .Select(l => l?.SourceSpan)
-                .Select(s => root.FindNode(s.GetValueOrDefault()))
-                .FirstOrDefault() as T;
+            return symbol?.DeclaringSyntaxReferences.FirstOrDefault(r => r.SyntaxTree.GetRoot() == root)?.GetSyntax() as T;
         }
 
         public static bool IsContractExpression(this MemberAccessExpressionSyntax expressionSyntax, ContractCategory category)
         {
-            if (expressionSyntax == null)
-                return false;
+            return expressionSyntax.GetContractCategory() == category;
+        }
 
-            var expected = new[] { category.ToString(), "Contract" };
+        public static ContractCategory GetContractCategory(this MemberAccessExpressionSyntax expressionSyntax)
+        {
+            var parts = expressionSyntax?.ToString()?.Split('.').Reverse().Take(2).ToArray();
 
-            return expressionSyntax.ToString().Split('.').Reverse().Take(2).SequenceEqual(expected);
+            if (parts?.Length != 2 || (parts[1] != "Contract"))
+                return ContractCategory.Unknown;
+
+            ContractCategory result;
+
+            return Enum.TryParse(parts[0], out result) ? result : ContractCategory.Unknown;
+        }
+
+        public static bool IsContractResultExpression(this InvocationExpressionSyntax item)
+        {
+            var expressionSyntax = item?.GetNotNullArgumentIdentifierSyntax<InvocationExpressionSyntax>()?.Expression as MemberAccessExpressionSyntax;
+
+            return expressionSyntax?.Name?.Identifier.Text == "Result";
         }
 
         [NotNull, ItemNotNull]
-        public static IEnumerable<T> GetNotNullIdentifierSyntax<T>([NotNull] this IEnumerable<InvocationExpressionSyntax> nodes)
+        public static IEnumerable<T> GetNotNullArgumentIdentifierSyntaxNodes<T>([NotNull] this IEnumerable<InvocationExpressionSyntax> nodes)
             where T : ExpressionSyntax
         {
-            return nodes.Select(node => node?.GetNotNullIdentifierSyntax<T>())
+            return nodes.Select(node => node?.GetNotNullArgumentIdentifierSyntax<T>())
                 .Where(item => item != null);
         }
 
-        public static T GetNotNullIdentifierSyntax<T>([NotNull] this InvocationExpressionSyntax node)
+        public static T GetNotNullArgumentIdentifierSyntax<T>([NotNull] this InvocationExpressionSyntax node)
             where T : ExpressionSyntax
         {
             var arguments = node.ArgumentList.Arguments;
@@ -67,12 +79,12 @@
             where T : ExpressionSyntax
         {
             return argumentExpression.TryCast().Returning<T>()
-                .When<BinaryExpressionSyntax>(GetIdentifyerSyntaxOfNotNullArgument<T>)
-                .When<PrefixUnaryExpressionSyntax>(GetIdentifyerSyntaxOfNotNullStringArgument<T>)
+                .When<BinaryExpressionSyntax>(GetNotNullArgumentIdentifyerSyntax<T>)
+                .When<PrefixUnaryExpressionSyntax>(GetNotNullStringArgumentIdentifyerSyntax<T>)
                 .Else(expr => null);
         }
 
-        private static T GetIdentifyerSyntaxOfNotNullStringArgument<T>(PrefixUnaryExpressionSyntax unaryArgumentExpression)
+        private static T GetNotNullStringArgumentIdentifyerSyntax<T>(PrefixUnaryExpressionSyntax unaryArgumentExpression)
             where T : ExpressionSyntax
         {
             if (unaryArgumentExpression?.Kind() != SyntaxKind.LogicalNotExpression)
@@ -96,7 +108,7 @@
             return arguments.Single()?.Expression as T;
         }
 
-        private static T GetIdentifyerSyntaxOfNotNullArgument<T>(BinaryExpressionSyntax binaryArgumentExpression)
+        private static T GetNotNullArgumentIdentifyerSyntax<T>(BinaryExpressionSyntax binaryArgumentExpression)
             where T : ExpressionSyntax
         {
             if (binaryArgumentExpression == null)
@@ -187,17 +199,6 @@
             return hasUsingDirective;
         }
 
-        public static bool HasAttributes([NotNull] this SyntaxNode node)
-        {
-            return node.TryCast().Returning<bool?>()
-                .When<ParameterSyntax>(item => item?.AttributeLists.Any())
-                .When<PropertyDeclarationSyntax>(item => item?.AttributeLists.Any())
-                .When<MethodDeclarationSyntax>(item => item?.AttributeLists.Any())
-                .When<FieldDeclarationSyntax>(item => item?.AttributeLists.Any())
-                .When<ClassDeclarationSyntax>(item => item?.AttributeLists.Any())
-                .Else(item => null) ?? false;
-        }
-
         public static SyntaxNode WithAttribute([NotNull] this SyntaxNode node, AttributeListSyntax attributeListSyntax)
         {
             return node.TryCast().Returning<SyntaxNode>()
@@ -223,6 +224,45 @@
             return baseClass.GetMembers().OfType<IPropertySymbol>().FirstOrDefault(p => PropertySignatureEquals(p, property));
         }
 
+        public static IMethodSymbol FindDeclaringMemberOnBaseClass(this INamedTypeSymbol baseClass, [NotNull] IMethodSymbol method)
+        {
+            if (baseClass == null)
+                return null;
+
+            if (baseClass.TypeKind == TypeKind.Interface)
+            {
+                return baseClass.GetMembers().OfType<IMethodSymbol>()
+                    .FirstOrDefault(m => method.ContainingType.FindImplementationForInterfaceMember(m)?.Equals(method) == true);
+            }
+
+            return baseClass.GetMembers().OfType<IMethodSymbol>().FirstOrDefault(m => MethodSignatureEquals(m, method));
+        }
+
+        public static IPropertySymbol FindImplementingMemberOnDerivedClass(this INamedTypeSymbol derivedClass, [NotNull] IPropertySymbol property)
+        {
+            if (derivedClass == null)
+                return null;
+
+            if (property.ContainingType?.TypeKind == TypeKind.Interface)
+            {
+                return derivedClass.FindImplementationForInterfaceMember(property) as IPropertySymbol;
+            }
+
+            return derivedClass.GetMembers().OfType<IPropertySymbol>().FirstOrDefault(p => PropertySignatureEquals(p, property));
+        }
+
+        public static IMethodSymbol FindImplementingMemberOnDerivedClass(this INamedTypeSymbol derivedClass, [NotNull] IMethodSymbol method)
+        {
+            if (derivedClass == null)
+                return null;
+
+            if (method.ContainingType?.TypeKind == TypeKind.Interface)
+            {
+                return derivedClass.FindImplementationForInterfaceMember(method) as IMethodSymbol;
+            }
+
+            return derivedClass.GetMembers().OfType<IMethodSymbol>().FirstOrDefault(m => MethodSignatureEquals(m, method));
+        }
         private static bool PropertySignatureEquals(IPropertySymbol baseProperty, [NotNull] IPropertySymbol property)
         {
             if (!property.IsOverride)
@@ -239,34 +279,6 @@
 
             return baseProperty.Type?.Equals(property.Type) ?? false;
         }
-
-        public static IMethodSymbol FindDeclaringMemberOnBaseClass(this INamedTypeSymbol baseClass, [NotNull] IMethodSymbol method)
-        {
-            if (baseClass == null)
-                return null;
-
-            if (baseClass.TypeKind == TypeKind.Interface)
-            {
-                return baseClass.GetMembers().OfType<IMethodSymbol>()
-                    .FirstOrDefault(m => method.ContainingType.FindImplementationForInterfaceMember(m)?.Equals(method) == true);
-            }
-
-            return baseClass.GetMembers().OfType<IMethodSymbol>().FirstOrDefault(m => MethodSignatureEquals(m, method));
-        }
-
-        public static IMethodSymbol FindImplementingMemberOnDerivedClass(this INamedTypeSymbol derivedClass, [NotNull] IMethodSymbol method)
-        {
-            if (derivedClass == null)
-                return null;
-
-            if (method.ContainingType?.TypeKind == TypeKind.Interface)
-            {
-                return derivedClass.FindImplementationForInterfaceMember(method) as IMethodSymbol;
-            }
-
-            return derivedClass.GetMembers().OfType<IMethodSymbol>().FirstOrDefault(m => MethodSignatureEquals(m, method));
-        }
-
 
         private static bool MethodSignatureEquals(IMethodSymbol baseMethod, [NotNull] IMethodSymbol method)
         {
@@ -322,7 +334,6 @@
             return containingType?.ContainingNamespace?.GetTypeMembers().FirstOrDefault(type => Equals(type?.GetContractClassFor(), containingType));
         }
 
-
         [ItemNotNull]
         private static IEnumerable<INamedTypeSymbol> GetBaseClassAndInterfaces([NotNull] this ISymbol symbol)
         {
@@ -354,13 +365,6 @@
                 return parameterSymbol;
 
             return baseMethod.Parameters[outerMethodSymbol.Parameters.IndexOf(parameterSymbol)];
-        }
-
-        public static bool IsContractResultExpression(this InvocationExpressionSyntax item)
-        {
-            var expressionSyntax = item.GetNotNullIdentifierSyntax<InvocationExpressionSyntax>()?.Expression as MemberAccessExpressionSyntax;
-
-            return expressionSyntax?.Name?.Identifier.Text == "Result";
         }
     }
 }

@@ -72,8 +72,7 @@ namespace ContracsReSharperInterop
                     .ToArray();
             }
 
-            [ItemNotNull]
-            [NotNull]
+            [NotNull, ItemNotNull]
             public IEnumerable<Diag> Analyze()
             {
                 var diags = AnalyzeMethodParameters()
@@ -94,7 +93,7 @@ namespace ContracsReSharperInterop
                     .Where(item => (item.Expression as MemberAccessExpressionSyntax).IsContractExpression(contractCategory)); // find all "Contract.Requires(...)" 
 
                 var parametersWithNotNullContract = requiresExpressions
-                    .GetNotNullIdentifierSyntax<IdentifierNameSyntax>()
+                    .GetNotNullArgumentIdentifierSyntaxNodes<IdentifierNameSyntax>()
                     .Select(syntax => _semanticModel.GetSymbolInfo(syntax).Symbol as IParameterSymbol) // get the parameter symbol 
                     .Select(symbol => symbol?.GetAnnotationTargetSymbol())
                     .Select(symbol => _root.GetSyntaxNode<ParameterSyntax>(symbol))
