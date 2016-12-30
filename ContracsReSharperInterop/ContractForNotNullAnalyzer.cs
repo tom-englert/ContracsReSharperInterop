@@ -145,8 +145,7 @@ namespace ContracsReSharperInterop
             private IEnumerable<Diag> AnalyzeFieldInvariants()
             {
                 var classDeclarations = _root.DescendantNodes()
-                    .OfType<ClassDeclarationSyntax>()
-                    .ToArray();
+                    .OfType<ClassDeclarationSyntax>();
 
                 foreach (var classDeclaration in classDeclarations)
                 {
@@ -172,10 +171,10 @@ namespace ContracsReSharperInterop
                         .Where(item => item.Expression.IsContractExpression(ContractCategory.Invariant)) // find all "Contract.Invariant(...)" 
                         .ToArray();
 
-                    var invariantNotNullFields = invariantExpressions.GetNotNullArgumentIdentifierSyntaxNodes()
+                    var invariantNotNullFields = invariantExpressions?.GetNotNullArgumentIdentifierSyntaxNodes()
                         .Select(syntax => _semanticModel.GetSymbolInfo(syntax).Symbol) // get the variable symbol 
                         .Select(notNullParameterSymbol => _root.GetSyntaxNode<SyntaxNode>(notNullParameterSymbol))
-                        .OfType<VariableDeclaratorSyntax>();
+                        .OfType<VariableDeclaratorSyntax>() ?? Enumerable.Empty<VariableDeclaratorSyntax>();
 
                     var fieldsWithoutContracts = notNullFields.Except(invariantNotNullFields);
 
