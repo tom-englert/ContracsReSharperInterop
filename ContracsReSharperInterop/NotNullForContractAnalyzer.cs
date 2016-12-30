@@ -130,10 +130,10 @@ namespace ContracsReSharperInterop
 
                 const ContractCategory contractCategory = ContractCategory.Invariant;
 
-                var requiresExpressions = _invocationExpressionSyntaxNodes
+                var invariantExpressions = _invocationExpressionSyntaxNodes
                     .Where(item => (item.Expression as MemberAccessExpressionSyntax).IsContractExpression(contractCategory)); // find all "Contract.Invariant(...)" 
 
-                var notNullSyntaxNodes = requiresExpressions.GetNotNullArgumentIdentifierSyntaxNodes()
+                var notNullSyntaxNodes = invariantExpressions.GetNotNullArgumentIdentifierSyntaxNodes()
                     .Select(syntax => _semanticModel.GetSymbolInfo(syntax).Symbol) // get the parameter symbol 
                     .Select(notNullParameterSymbol => _root.GetSyntaxNode<SyntaxNode>(notNullParameterSymbol));
 

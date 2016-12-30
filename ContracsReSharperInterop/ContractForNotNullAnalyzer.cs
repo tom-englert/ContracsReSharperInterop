@@ -78,6 +78,7 @@ namespace ContracsReSharperInterop
             {
                 var diags = AnalyzeMethodParameters()
                     .Concat(AnalyzeMethodEnsures())
+                    .Concat(AnalyzeFieldInvariants())
                     .Where(diag => diag != null)
                     .Distinct()
                     .ToArray();
@@ -141,6 +142,52 @@ namespace ContracsReSharperInterop
                 }
             }
 
+            private IEnumerable<Diag> AnalyzeFieldInvariants()
+            {
+                var classDeclarations = _root.DescendantNodes()
+                    .OfType<ClassDeclarationSyntax>()
+                    .ToArray();
+
+                foreach (var classDeclaration in classDeclarations)
+                {
+                    var notNullFields = classDeclaration.ChildNodes()
+                        .OfType<FieldDeclarationSyntax>()
+                        .Where(f => f.AttributeLists.ContainsNotNullAttribute())
+                        .SelectMany(f => f.Declaration.Variables)
+                        .ToArray();
+
+                    if (!notNullFields.Any())
+                        continue;
+
+                    var invariantMethod = classDeclaration.ChildNodes()
+                        .OfType<MethodDeclarationSyntax>()
+                        .FirstOrDefault(m => m.AttributeLists.ContainsAttribute("ContractInvariantMethod"));
+
+                    if (invariantMethod == null)
+                        continue;
+
+                    var statements = invariantMethod.Body?.Statements.OfType<InvocationExpressionSyntax>().ToArray();
+
+                    var invariantExpressions = statements?.OfType<InvocationExpressionSyntax>()
+                        .Where(item => item.Expression.IsContractExpression(ContractCategory.Invariant)); // find all "Contract.Invariant(...)" 
+
+                    var invariantNotNullFields = invariantExpressions.GetNotNullArgumentIdentifierSyntaxNodes()
+                        .Select(syntax => _semanticModel.GetSymbolInfo(syntax).Symbol) // get the variable symbol 
+                        .Select(notNullParameterSymbol => _root.GetSyntaxNode<SyntaxNode>(notNullParameterSymbol))
+                        .OfType<VariableDeclaratorSyntax>();
+
+                    var fieldsWithoutContracts = notNullFields.Except(invariantNotNullFields);
+
+                    foreach (var field in fieldsWithoutContracts)
+                    {
+                        yield return GetDiagnostic(field, ContractCategory.Invariant);
+                    }
+
+                }
+
+                yield break;
+            }
+
             private static Diag GetDiagnostic(ParameterSyntax syntax, ContractCategory contractCategory)
             {
                 if (syntax == null)
@@ -155,6 +202,13 @@ namespace ContracsReSharperInterop
                     return null;
 
                 return new Diag(syntax.Identifier.GetLocation(), syntax.Identifier.Text, contractCategory);
+            }
+
+            private static Diag GetDiagnostic(VariableDeclaratorSyntax syntax, ContractCategory contractCategory)
+            {
+                var fieldDeclarationSyntax = syntax?.Ancestors().OfType<FieldDeclarationSyntax>().FirstOrDefault();
+
+                return new Diag(fieldDeclarationSyntax.GetLocation(), syntax.ToString(), contractCategory);
             }
 
             private static bool CanAddContracts(MethodDeclarationSyntax method)

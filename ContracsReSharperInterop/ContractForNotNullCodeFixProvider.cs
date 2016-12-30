@@ -63,6 +63,7 @@
             var newRoot = node.TryCast().Returning<CompilationUnitSyntax>()
                 .When<ParameterSyntax>(syntax => AddRequires(root, semanticModel, syntax))
                 .When<MethodDeclarationSyntax>(syntax => AddEnsures(root, semanticModel, syntax))
+                .When<FieldDeclarationSyntax>(syntax => AddInvariant(root, semanticModel, syntax))
                 .Else(syntax => root);
 
             Debug.Assert(newRoot != null);
@@ -161,6 +162,21 @@
             }
 
             return root;
+        }
+
+        private static CompilationUnitSyntax AddInvariant(CompilationUnitSyntax root, SemanticModel semanticModel, [NotNull] FieldDeclarationSyntax fieldSyntax)
+        {
+            var classDeclaration = fieldSyntax.Ancestors().OfType<ClassDeclarationSyntax>().FirstOrDefault();
+
+            var invariantMethod = classDeclaration?.ChildNodes()
+                .OfType<MethodDeclarationSyntax>()
+                .FirstOrDefault(m => m.AttributeLists.ContainsAttribute("ContractInvariantMethod"));
+
+            var statements = fieldSyntax.Declaration.Variables
+                .Select(variable => SyntaxFactory.ParseStatement($"            Contract.Invariant({variable.Identifier.Text} != null);\r\n"))
+                .ToArray();
+
+            return root.ReplaceNode(invariantMethod, invariantMethod.AddBodyStatements(statements));
         }
     }
 }

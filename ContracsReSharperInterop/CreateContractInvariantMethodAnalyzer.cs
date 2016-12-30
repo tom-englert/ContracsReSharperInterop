@@ -1,5 +1,4 @@
-﻿using System.Diagnostics.Contracts;
-namespace ContracsReSharperInterop
+﻿namespace ContracsReSharperInterop
 {
     using System.Collections.Immutable;
     using System.Linq;
@@ -8,8 +7,6 @@ namespace ContracsReSharperInterop
     using Microsoft.CodeAnalysis.CSharp;
     using Microsoft.CodeAnalysis.CSharp.Syntax;
     using Microsoft.CodeAnalysis.Diagnostics;
-
-    using TomsToolbox.Core;
 
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     internal class CreateContractInvariantMethodAnalyzer : DiagnosticAnalyzer

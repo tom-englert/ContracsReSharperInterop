@@ -532,6 +532,9 @@ namespace Test
 {
     class Class
     {
+        [NotNull]
+        private int _field;
+
         void Method(object arg, object arg2)
         {
         }
@@ -539,6 +542,100 @@ namespace Test
 }";
 
             VerifyCSharpDiagnostic(originalCode);
+        }
+
+        [Fact]
+        public void NoDiagnosticIsGeneratedIfClassHasNotNullFieldsWithContractInvariant()
+        {
+            const string originalCode = @"
+using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    class Class
+    {
+        [NotNull] 
+        private int _field;
+        [NotNull] 
+        private int _field2;
+
+        void Method(object arg, object arg2) 
+        {
+        }
+
+        [ContractInvariantMethod]
+        [SuppressMessage(""Microsoft.Performance"", ""CA1822: MarkMembersAsStatic"", Justification = ""Required for code contracts."")]
+        [Conditional(""CONTRACTS_FULL"")]
+        private void ObjectInvariant()
+        {
+            Contract.Invariant(_field != null);
+            Contract.Invariant(_field2 != null);
+        }
+    }
+}";
+
+            VerifyCSharpDiagnostic(originalCode);
+        }
+
+        [Fact]
+        public void DiagnosticIsGeneratedIfClassHasNotNullFieldsAndContractInvariantMethod()
+        {
+            const string originalCode = @"
+using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    class Class
+    {
+        [NotNull] 
+        private int _field;
+
+        void Method(object arg, object arg2) 
+        {
+        }
+
+        [ContractInvariantMethod]
+        [SuppressMessage(""Microsoft.Performance"", ""CA1822: MarkMembersAsStatic"", Justification = ""Required for code contracts."")]
+        [Conditional(""CONTRACTS_FULL"")]
+        private void ObjectInvariant()
+        {
+        }
+    }
+}";
+            var expected = new DiagnosticResult(10, 9, "_field");
+
+            VerifyCSharpDiagnostic(originalCode, expected);
+
+            const string fixedCode = @"
+using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    class Class
+    {
+        [NotNull] 
+        private int _field;
+
+        void Method(object arg, object arg2) 
+        {
+        }
+
+        [ContractInvariantMethod]
+        [SuppressMessage(""Microsoft.Performance"", ""CA1822: MarkMembersAsStatic"", Justification = ""Required for code contracts."")]
+        [Conditional(""CONTRACTS_FULL"")]
+        private void ObjectInvariant()
+        {
+            Contract.Invariant(_field != null);
+        }
+    }
+}";
+            VerifyCSharpFix(originalCode, fixedCode, null, true);
         }
     }
 }
