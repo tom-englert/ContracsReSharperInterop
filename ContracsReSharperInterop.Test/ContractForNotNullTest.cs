@@ -557,9 +557,9 @@ namespace Test
     class Class
     {
         [NotNull] 
-        private int _field;
+        private object _field;
         [NotNull] 
-        private int _field2;
+        private readonly object _field2;
 
         void Method(object arg, object arg2) 
         {

@@ -166,10 +166,11 @@ namespace ContracsReSharperInterop
                     if (invariantMethod == null)
                         continue;
 
-                    var statements = invariantMethod.Body?.Statements.OfType<InvocationExpressionSyntax>().ToArray();
-
-                    var invariantExpressions = statements?.OfType<InvocationExpressionSyntax>()
-                        .Where(item => item.Expression.IsContractExpression(ContractCategory.Invariant)); // find all "Contract.Invariant(...)" 
+                    var invariantExpressions = invariantMethod.Body?.Statements.OfType<ExpressionStatementSyntax>()
+                        .Select(s => s.Expression)
+                        .OfType<InvocationExpressionSyntax>()
+                        .Where(item => item.Expression.IsContractExpression(ContractCategory.Invariant)) // find all "Contract.Invariant(...)" 
+                        .ToArray();
 
                     var invariantNotNullFields = invariantExpressions.GetNotNullArgumentIdentifierSyntaxNodes()
                         .Select(syntax => _semanticModel.GetSymbolInfo(syntax).Symbol) // get the variable symbol 
