@@ -12,6 +12,8 @@ namespace ContracsReSharperInterop
     using Microsoft.CodeAnalysis.CSharp.Syntax;
     using Microsoft.CodeAnalysis.Diagnostics;
 
+    using TomsToolbox.Core;
+
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     internal class ContractForNotNullAnalyzer : DiagnosticAnalyzer
     {
@@ -99,10 +101,11 @@ namespace ContracsReSharperInterop
                     .Where(parameter => parameter != null);
 
                 var parametersWithNotNullAnnotation = _methodDeclarationSyntaxNodes
+                    .Where(CanAddContracts)
                     .SelectMany(node => node.ParameterList.Parameters)
-                    .Where(parameter => parameter?.AttributeLists.ContainsNotNullAttribute() == true);
+                    .Where(parameter => parameter.AttributeLists.ContainsNotNullAttribute());
 
-                var parametersWithMissingContracts = parametersWithNotNullAnnotation.Except(parametersWithNotNullContract);
+                var parametersWithMissingContracts = parametersWithNotNullAnnotation.Except(parametersWithNotNullContract, new DelegateEqualityComparer<ParameterSyntax>(p => p.GetLocation()));
 
                 foreach (var parameterSyntax in parametersWithMissingContracts)
                 {
@@ -126,6 +129,7 @@ namespace ContracsReSharperInterop
                     .Where(method => method != null);
 
                 var methodsWithNotNullAnnotation = _methodDeclarationSyntaxNodes
+                    .Where(CanAddContracts)
                     .Where(method => method.AttributeLists.ContainsNotNullAttribute());
 
                 var methodsWithMissingContractEnsures = methodsWithNotNullAnnotation
@@ -151,6 +155,20 @@ namespace ContracsReSharperInterop
                     return null;
 
                 return new Diag(syntax.Identifier.GetLocation(), syntax.Identifier.Text, contractCategory);
+            }
+
+            private static bool CanAddContracts(MethodDeclarationSyntax method)
+            {
+                if (method == null)
+                    return false;
+
+                if (method.Body != null)
+                    return true;
+
+                if (method.Parent.ContainsAttribute("ContractClass"))
+                    return true;
+
+                return false;
             }
         }
 

@@ -4,6 +4,7 @@
     using System.Linq;
 
     using Microsoft.CodeAnalysis;
+    using Microsoft.CodeAnalysis.CSharp;
     using Microsoft.CodeAnalysis.CSharp.Syntax;
     using Microsoft.CodeAnalysis.Diagnostics;
 
@@ -26,34 +27,45 @@
 
         public override void Initialize(AnalysisContext context)
         {
-            context?.RegisterSemanticModelAction(Analyze);
-        }
-
-        private static void Analyze(SemanticModelAnalysisContext context)
-        {
-            var root = context.SemanticModel?.SyntaxTree?.GetRoot(context.CancellationToken);
-            if (root == null)
+            if (context == null)
                 return;
 
-            var classDeclarations = root.DescendantNodes().OfType<ClassDeclarationSyntax>()
-                .Where(ExtensionMethods.IsAbstractMember)
-                .Where(declaration => !declaration.AttributeLists.ContainsAttribute("ContractClass"))
-                .Where(declaration => declaration.DescendantNodes().Where(ExtensionMethods.IsAbstractMember).Any(HasNotNullAnntotations));
+            context.RegisterSyntaxNodeAction(AnalyzeClass, SyntaxKind.ClassDeclaration);
+            context.RegisterSyntaxNodeAction(AnalyzeInterface, SyntaxKind.InterfaceDeclaration);
+        }
 
-            foreach (var classDeclaration in classDeclarations)
-            {
-                context.ReportDiagnostic(Diagnostic.Create(_rule, classDeclaration.GetLocation(), classDeclaration.Identifier.Text));
-            }
+        private static void AnalyzeClass(SyntaxNodeAnalysisContext context)
+        {
+            var classDeclaration = context.Node as ClassDeclarationSyntax;
+            if (classDeclaration == null)
+                return;
 
-            var interfaceDeclarations = root.DescendantNodes().OfType<InterfaceDeclarationSyntax>()
-                .Where(declaration => !declaration.AttributeLists.ContainsAttribute("ContractClass"))
-                .Where(declaration => declaration.DescendantNodes().Any(HasNotNullAnntotations));
+            if (!classDeclaration.IsAbstractMember())
+                return;
 
-            foreach (var interfaceDeclaration in interfaceDeclarations)
-            {
-                context.ReportDiagnostic(Diagnostic.Create(_rule, interfaceDeclaration.GetLocation(), interfaceDeclaration.Identifier.Text));
-            }
-       }
+            if (classDeclaration.AttributeLists.ContainsAttribute("ContractClass"))
+                return;
+
+            if (!classDeclaration.DescendantNodes().Where(node => node.IsAbstractMember()).Any(HasNotNullAnntotations))
+                return;
+
+            context.ReportDiagnostic(Diagnostic.Create(_rule, classDeclaration.GetLocation(), classDeclaration.Identifier.Text));
+        }
+
+        private static void AnalyzeInterface(SyntaxNodeAnalysisContext context)
+        {
+            var interfaceDeclaration = context.Node as InterfaceDeclarationSyntax;
+            if (interfaceDeclaration == null)
+                return;
+
+            if (interfaceDeclaration.AttributeLists.ContainsAttribute("ContractClass"))
+                return;
+
+            if (!interfaceDeclaration.DescendantNodes().Any(HasNotNullAnntotations))
+                return;
+
+            context.ReportDiagnostic(Diagnostic.Create(_rule, interfaceDeclaration.GetLocation(), interfaceDeclaration.Identifier.Text));
+        }
 
         private static bool HasNotNullAnntotations(SyntaxNode node)
         {

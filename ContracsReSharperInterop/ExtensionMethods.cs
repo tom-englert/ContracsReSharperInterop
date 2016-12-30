@@ -4,6 +4,7 @@ namespace ContracsReSharperInterop
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics.CodeAnalysis;
     using System.Linq;
 
     using JetBrains.Annotations;
@@ -69,8 +70,8 @@ namespace ContracsReSharperInterop
         {
             var arguments = node.ArgumentList.Arguments;
 
-            return arguments.Count == 1 // ContractRequires has just one argument
-                ? arguments.Single()?.Expression.GetNotNullArgumentIdentifierSyntax<T>()
+            return arguments.Count == 1 // Contract.??? have just one argument
+                ? arguments.Single()?.Expression?.GetNotNullArgumentIdentifierSyntax<T>()
                 : null;
         }
 
@@ -192,12 +193,13 @@ namespace ContracsReSharperInterop
             var hasUsingDirective = root.DescendantNodes()
                 .Where(node => node.Kind() == SyntaxKind.UsingDirective)
                 .OfType<UsingDirectiveSyntax>()
-                .Where(x => ancestors.Contains(x?.Parent))
-                .Any(node => string.Equals(node?.Name.ToString(), usingDirectiveName, StringComparison.Ordinal));
+                .Where(x => ancestors.Contains(x.Parent))
+                .Any(node => string.Equals(node.Name.ToString(), usingDirectiveName, StringComparison.Ordinal));
 
             return hasUsingDirective;
         }
 
+        [SuppressMessage("ReSharper", "PossibleNullReferenceException")]
         public static T WithAttribute<T>([NotNull] this T node, AttributeListSyntax attributeListSyntax)
             where T : SyntaxNode
         {
@@ -213,6 +215,23 @@ namespace ContracsReSharperInterop
             return (T)result;
         }
 
+        [SuppressMessage("ReSharper", "PossibleNullReferenceException")]
+        public static bool ContainsAttribute(this SyntaxNode node, string attributeName)
+        {
+            if (node == null)
+                return false;
+
+            return node.TryCast().Returning<bool>()
+                .When<ParameterSyntax>(item => item.AttributeLists.ContainsAttribute(attributeName))
+                .When<PropertyDeclarationSyntax>(item => item.AttributeLists.ContainsAttribute(attributeName))
+                .When<MethodDeclarationSyntax>(item => item.AttributeLists.ContainsAttribute(attributeName))
+                .When<FieldDeclarationSyntax>(item => item.AttributeLists.ContainsAttribute(attributeName))
+                .When<ClassDeclarationSyntax>(item => item.AttributeLists.ContainsAttribute(attributeName))
+                .When<InterfaceDeclarationSyntax>(item => item.AttributeLists.ContainsAttribute(attributeName))
+                .ElseThrow("unsupported node: " + node);
+        }
+
+
         public static IPropertySymbol FindDeclaringMemberOnBaseClass(this INamedTypeSymbol baseClass, [NotNull] IPropertySymbol property)
         {
             if (baseClass == null)
@@ -221,7 +240,7 @@ namespace ContracsReSharperInterop
             if (baseClass.TypeKind == TypeKind.Interface)
             {
                 return baseClass.GetMembers().OfType<IPropertySymbol>()
-                    .FirstOrDefault(m => property.ContainingType.FindImplementationForInterfaceMember(m)?.Equals(property) == true);
+                    .FirstOrDefault(m => property.ContainingType?.FindImplementationForInterfaceMember(m)?.Equals(property) == true);
             }
 
             return baseClass.GetMembers().OfType<IPropertySymbol>().FirstOrDefault(p => PropertySignatureEquals(p, property));
@@ -235,7 +254,7 @@ namespace ContracsReSharperInterop
             if (baseClass.TypeKind == TypeKind.Interface)
             {
                 return baseClass.GetMembers().OfType<IMethodSymbol>()
-                    .FirstOrDefault(m => method.ContainingType.FindImplementationForInterfaceMember(m)?.Equals(method) == true);
+                    .FirstOrDefault(m => method.ContainingType?.FindImplementationForInterfaceMember(m)?.Equals(method) == true);
             }
 
             return baseClass.GetMembers().OfType<IMethodSymbol>().FirstOrDefault(m => MethodSignatureEquals(m, method));
@@ -251,7 +270,7 @@ namespace ContracsReSharperInterop
                 return derivedClass.FindImplementationForInterfaceMember(property) as IPropertySymbol;
             }
 
-            return derivedClass.GetMembers().OfType<IPropertySymbol>().FirstOrDefault(p => PropertySignatureEquals(p, property));
+            return derivedClass.GetMembers().OfType<IPropertySymbol>().FirstOrDefault(p => PropertySignatureEquals(property, p));
         }
 
         public static IMethodSymbol FindImplementingMemberOnDerivedClass(this INamedTypeSymbol derivedClass, [NotNull] IMethodSymbol method)
@@ -264,8 +283,9 @@ namespace ContracsReSharperInterop
                 return derivedClass.FindImplementationForInterfaceMember(method) as IMethodSymbol;
             }
 
-            return derivedClass.GetMembers().OfType<IMethodSymbol>().FirstOrDefault(m => MethodSignatureEquals(m, method));
+            return derivedClass.GetMembers().OfType<IMethodSymbol>().FirstOrDefault(m => MethodSignatureEquals(method, m));
         }
+
         private static bool PropertySignatureEquals(IPropertySymbol baseProperty, [NotNull] IPropertySymbol property)
         {
             if (!property.IsOverride)
@@ -337,7 +357,7 @@ namespace ContracsReSharperInterop
             return containingType?.ContainingNamespace?.GetTypeMembers().FirstOrDefault(type => Equals(type?.GetContractClassFor(), containingType));
         }
 
-        [ItemNotNull]
+        [NotNull, ItemNotNull]
         private static IEnumerable<INamedTypeSymbol> GetBaseClassAndInterfaces([NotNull] this ISymbol symbol)
         {
             var type = symbol.ContainingType;

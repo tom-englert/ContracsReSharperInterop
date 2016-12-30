@@ -77,20 +77,26 @@
 
         private static CompilationUnitSyntax AddRequires(CompilationUnitSyntax root, SemanticModel semanticModel, [NotNull] ParameterSyntax parameterSyntax)
         {
-            var methodSyntax = parameterSyntax.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault();
+            var methodSyntax = parameterSyntax.Parent?.Parent as MethodDeclarationSyntax;
             if (methodSyntax == null)
                 return root;
+
+            var body = methodSyntax.Body;
+            if (body == null)
+                return AddRequiresOnContractClass(root, semanticModel, methodSyntax, parameterSyntax);
 
             var parametersBefore = methodSyntax.ParameterList.Parameters.TakeWhile(p => p != parameterSyntax).Select(p => p.Identifier.Text).ToArray();
 
             var statements = methodSyntax.Body.Statements;
 
             var index = statements
-                .Select(s => (s as ExpressionStatementSyntax)?.Expression as InvocationExpressionSyntax)
-                .TakeWhile(s => (s?.Expression as MemberAccessExpressionSyntax).IsContractExpression(ContractCategory.Requires))
-                .Select(p => p?.GetNotNullArgumentIdentifierSyntax<IdentifierNameSyntax>())
-                .Select(p => semanticModel.GetSymbolInfo(p).Symbol)
-                .Select(p => p?.Name)
+                .OfType<ExpressionStatementSyntax>()
+                .Select(s => s.Expression)
+                .OfType<InvocationExpressionSyntax>()
+                .TakeWhile(s => s.Expression.IsContractExpression(ContractCategory.Requires))
+                .Select(e => e.GetNotNullArgumentIdentifierSyntax<IdentifierNameSyntax>())
+                .Select(s => semanticModel.GetSymbolInfo(s).Symbol)
+                .Select(s => s?.Name)
                 .TakeWhile(n => parametersBefore.Contains(n))
                 .Count();
 
@@ -131,9 +137,27 @@
 
             methodSyntax = root.GetSyntaxNode<MethodDeclarationSyntax>(contractClass?.FindImplementingMemberOnDerivedClass(methodSymbol));
 
-            if (methodSyntax != null)
+            if (methodSyntax?.Body != null)
             {
                 return AddEnsures(root, semanticModel, methodSyntax);
+            }
+
+            return root;
+        }
+
+        private static CompilationUnitSyntax AddRequiresOnContractClass(CompilationUnitSyntax root, SemanticModel semanticModel, MethodDeclarationSyntax methodSyntax, ParameterSyntax parameterSyntax)
+        {
+            var methodSymbol = semanticModel.GetDeclaredSymbol(methodSyntax);
+
+            var contractClass = methodSymbol?.GetContractClass();
+
+            var parameterIndex = methodSyntax.ParameterList.Parameters.IndexOf(parameterSyntax);
+
+            methodSyntax = root.GetSyntaxNode<MethodDeclarationSyntax>(contractClass?.FindImplementingMemberOnDerivedClass(methodSymbol));
+
+            if (methodSyntax?.Body != null)
+            {
+                return AddRequires(root, semanticModel, methodSyntax.ParameterList.Parameters[parameterIndex]);
             }
 
             return root;
