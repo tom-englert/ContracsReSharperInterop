@@ -32,8 +32,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="CreateContractInvariantMethodAnalyzer.cs" />
     <Compile Include="CreateContractClassAnalyzer.cs" />
     <Compile Include="ConditionalForContractInvariantAnalyzer.cs" />
+    <Compile Include="CreateContractInvariantMethodCodeFixProvider.cs" />
     <Compile Include="CreateContractClassCodeFixProvider.cs" />
     <Compile Include="ConditionalForContractInvariantCodeFixProvider.cs" />
     <Compile Include="ContractForNotNullAnalyzer.cs" />

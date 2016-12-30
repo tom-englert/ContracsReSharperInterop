@@ -2,7 +2,7 @@
 {
     using Xunit;
 
-    public class ContractForNotNullParameterTest : ContractForNotNullCodeFixVerifier
+    public class ContractForNotNullTest : ContractForNotNullCodeFixVerifier
     {
         [Fact]
         public void NoDiagnosticIsGeneratedIfAllNotNullParametersHaveContracts()
@@ -519,31 +519,26 @@ namespace Test
 }";
             VerifyCSharpFix(originalCode, fixedCode, null, true);
         }
-    }
-}
 
-namespace Test1
+
+        [Fact]
+        public void NoDiagnosticIsGeneratedIfClassHasNotNullFieldsButNoContractInvariantMethod()
+        {
+            const string originalCode = @"
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
 {
-    namespace Test
+    class Class
     {
-        using System.Diagnostics.Contracts;
-
-        using JetBrains.Annotations;
-
-        [ContractClass(typeof(ClassContract))]
-        abstract class Class
+        void Method(object arg, object arg2)
         {
-            [NotNull]
-            public abstract System.Collections.Generic.IEnumerable<object> Method([NotNull] object arg, [NotNull] object arg2);
         }
+    }
+}";
 
-        [ContractClassFor(typeof(Class))]
-        abstract class ClassContract : Class
-        {
-            public override System.Collections.Generic.IEnumerable<object> Method(object arg, object arg2)
-            {
-                return null;
-            }
+            VerifyCSharpDiagnostic(originalCode);
         }
     }
 }

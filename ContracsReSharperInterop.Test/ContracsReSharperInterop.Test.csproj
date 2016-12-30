@@ -123,9 +123,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ConditionalForContractInvariantCodeFixVerifier.cs" />
+    <Compile Include="CreateContractInvariantMethodCodeFixVerifier.cs" />
     <Compile Include="CreateContractClassCodeFixVerifier.cs" />
+    <Compile Include="CreateContractInvariantMethodTest.cs" />
     <Compile Include="CreateContractClassTest.cs" />
-    <Compile Include="ContractForNotNullParameterTest.cs" />
+    <Compile Include="ContractForNotNullTest.cs" />
     <Compile Include="ContractInvariantTests.cs" />
     <Compile Include="ContractClassForTests.cs" />
     <Compile Include="ContractForNotNullCodeFixVerifier.cs" />
