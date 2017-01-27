@@ -50,7 +50,7 @@
 
             if (!hasInvariantMethod)
             {
-                context.ReportDiagnostic(Diagnostic.Create(_rule, classDeclaration.GetLocation(), classDeclaration.Identifier.Text));
+                context.ReportDiagnostic(Diagnostic.Create(_rule, classDeclaration.Identifier.GetLocation(), classDeclaration.Identifier.Text));
             }
         }
     }

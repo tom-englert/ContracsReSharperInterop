@@ -17,7 +17,7 @@
 
     using TomsToolbox.Core;
 
-    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(NotNullForContractCodeFixProvider)), Shared]
+    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(ContractForNotNullCodeFixProvider)), Shared]
     internal class ContractForNotNullCodeFixProvider : CodeFixProvider
     {
         private const string UsingDirectiveName = "System.Diagnostics.Contracts";

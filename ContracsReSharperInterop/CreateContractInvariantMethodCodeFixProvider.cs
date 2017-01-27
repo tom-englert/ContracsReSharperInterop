@@ -18,13 +18,13 @@ namespace ContracsReSharperInterop
 
     using TomsToolbox.Core;
 
-    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(CreateContractClassCodeFixProvider)), Shared]
+    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(CreateContractInvariantMethodCodeFixProvider)), Shared]
     public class CreateContractInvariantMethodCodeFixProvider : CodeFixProvider
     {
-        private static readonly string[] UsingDirectiveNames = { "System.Diagnostics.Contracts", "System.Diagnostics.CodeAnalysis" };
+        private static readonly string[] UsingDirectiveNames = { "System.Diagnostics", "System.Diagnostics.Contracts", "System.Diagnostics.CodeAnalysis" };
         private const string Title = "Add Contract Invariant Method";
 
-        public sealed override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create(CreateContractClassAnalyzer.DiagnosticId);
+        public sealed override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create(CreateContractInvariantMethodAnalyzer.DiagnosticId);
 
         public sealed override FixAllProvider GetFixAllProvider()
         {
@@ -57,9 +57,9 @@ namespace ContracsReSharperInterop
 
             var missingUsingDirectives = UsingDirectiveNames.Where(dir => !root.HasUsingDirective(classDeclaration, dir)).ToArray();
 
-            var firstNode = root.ChildNodes().FirstOrDefault();
-
-            editor.InsertBefore(firstNode, missingUsingDirectives.Select(dir => SyntaxFactory.UsingDirective(SyntaxFactory.IdentifierName(dir))));
+            var firstNode = root.DescendantNodes().OfType<UsingDirectiveSyntax>().FirstOrDefault();
+            if (firstNode != null)
+                editor.InsertBefore(firstNode, missingUsingDirectives.Select(dir => SyntaxFactory.UsingDirective(SyntaxFactory.IdentifierName(dir))));
 
             var invariantMethod = SyntaxFactory.MethodDeclaration(SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.VoidKeyword)), "ObjectInvariant")
                 .AddModifiers(SyntaxFactory.Token(SyntaxKind.PrivateKeyword))
