@@ -78,7 +78,7 @@
 
         private static CompilationUnitSyntax AddRequires(CompilationUnitSyntax root, SemanticModel semanticModel, [NotNull] ParameterSyntax parameterSyntax)
         {
-            var methodSyntax = parameterSyntax.Parent?.Parent as MethodDeclarationSyntax;
+            var methodSyntax = parameterSyntax.Parent?.Parent as BaseMethodDeclarationSyntax;
             if (methodSyntax == null)
                 return root;
 
@@ -146,7 +146,7 @@
             return root;
         }
 
-        private static CompilationUnitSyntax AddRequiresOnContractClass(CompilationUnitSyntax root, SemanticModel semanticModel, MethodDeclarationSyntax methodSyntax, ParameterSyntax parameterSyntax)
+        private static CompilationUnitSyntax AddRequiresOnContractClass(CompilationUnitSyntax root, SemanticModel semanticModel, BaseMethodDeclarationSyntax methodSyntax, ParameterSyntax parameterSyntax)
         {
             var methodSymbol = semanticModel.GetDeclaredSymbol(methodSyntax);
 

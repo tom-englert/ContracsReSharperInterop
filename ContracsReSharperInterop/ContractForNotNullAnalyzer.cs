@@ -57,7 +57,7 @@ namespace ContracsReSharperInterop
             [NotNull, ItemNotNull]
             private readonly ICollection<InvocationExpressionSyntax> _invocationExpressionSyntaxNodes;
             [NotNull, ItemNotNull]
-            private readonly ICollection<MethodDeclarationSyntax> _methodDeclarationSyntaxNodes;
+            private readonly ICollection<BaseMethodDeclarationSyntax> _methodDeclarationSyntaxNodes;
 
             public Analyzer([NotNull] SemanticModel semanticModel, [NotNull] SyntaxNode root)
             {
@@ -69,7 +69,7 @@ namespace ContracsReSharperInterop
                     .ToArray();
                 // ReSharper disable once AssignNullToNotNullAttribute
                 _methodDeclarationSyntaxNodes = root.DescendantNodesAndSelf()
-                    .OfType<MethodDeclarationSyntax>()
+                    .OfType<BaseMethodDeclarationSyntax>()
                     .ToArray();
             }
 
@@ -92,11 +92,11 @@ namespace ContracsReSharperInterop
                 const ContractCategory contractCategory = ContractCategory.Requires;
 
                 var requiresExpressions = _invocationExpressionSyntaxNodes
-                    .Where(item => (item.Expression as MemberAccessExpressionSyntax).IsContractExpression(contractCategory)); // find all "Contract.Requires(...)" 
+                    .Where(item => (item.Expression as MemberAccessExpressionSyntax).IsContractExpression(contractCategory)); // find all "Contract.Requires(...)"
 
                 var parametersWithNotNullContract = requiresExpressions
                     .GetNotNullArgumentIdentifierSyntaxNodes()
-                    .Select(syntax => _semanticModel.GetSymbolInfo(syntax).Symbol as IParameterSymbol) // get the parameter symbol 
+                    .Select(syntax => _semanticModel.GetSymbolInfo(syntax).Symbol as IParameterSymbol) // get the parameter symbol
                     .Select(symbol => symbol?.GetTargetSymbolForAnnotation())
                     .Select(symbol => _root.GetSyntaxNode<ParameterSyntax>(symbol))
                     .Where(parameter => parameter != null);
@@ -121,7 +121,7 @@ namespace ContracsReSharperInterop
                 const ContractCategory contractCategory = ContractCategory.Ensures;
 
                 var ensuresExpressions = _invocationExpressionSyntaxNodes
-                    .Where(item => (item.Expression as MemberAccessExpressionSyntax).IsContractExpression(contractCategory)) // find all "Contract.Ensures(...)" 
+                    .Where(item => (item.Expression as MemberAccessExpressionSyntax).IsContractExpression(contractCategory)) // find all "Contract.Ensures(...)"
                     .Where(item => item.IsContractResultExpression());
 
                 var methodsWithContractEnsures = ensuresExpressions
@@ -168,11 +168,11 @@ namespace ContracsReSharperInterop
                     var invariantExpressions = invariantMethod.Body?.Statements.OfType<ExpressionStatementSyntax>()
                         .Select(s => s.Expression)
                         .OfType<InvocationExpressionSyntax>()
-                        .Where(item => item.Expression.IsContractExpression(ContractCategory.Invariant)) // find all "Contract.Invariant(...)" 
+                        .Where(item => item.Expression.IsContractExpression(ContractCategory.Invariant)) // find all "Contract.Invariant(...)"
                         .ToArray();
 
                     var invariantNotNullFields = invariantExpressions?.GetNotNullArgumentIdentifierSyntaxNodes()
-                        .Select(syntax => _semanticModel.GetSymbolInfo(syntax).Symbol) // get the variable symbol 
+                        .Select(syntax => _semanticModel.GetSymbolInfo(syntax).Symbol) // get the variable symbol
                         .Select(notNullParameterSymbol => _root.GetSyntaxNode<SyntaxNode>(notNullParameterSymbol))
                         .OfType<VariableDeclaratorSyntax>() ?? Enumerable.Empty<VariableDeclaratorSyntax>();
 
@@ -196,12 +196,15 @@ namespace ContracsReSharperInterop
                 return new Diag(syntax.Identifier.GetLocation(), syntax.Identifier.Text, contractCategory);
             }
 
-            private static Diag GetDiagnostic(MethodDeclarationSyntax syntax, ContractCategory contractCategory)
+            private static Diag GetDiagnostic(BaseMethodDeclarationSyntax syntax, ContractCategory contractCategory)
             {
                 if (syntax == null)
                     return null;
 
-                return new Diag(syntax.Identifier.GetLocation(), syntax.Identifier.Text, contractCategory);
+                return syntax.TryCast().Returning<Diag>()
+                    .When<MethodDeclarationSyntax>(s => new Diag(s.Identifier.GetLocation(), s.Identifier.Text, contractCategory))
+                    .When<ConstructorDeclarationSyntax>(s => new Diag(s.Identifier.GetLocation(), s.Identifier.Text, contractCategory))
+                    .Result;
             }
 
             private static Diag GetDiagnostic(VariableDeclaratorSyntax syntax, ContractCategory contractCategory)
@@ -211,7 +214,7 @@ namespace ContracsReSharperInterop
                 return new Diag(fieldDeclarationSyntax.GetLocation(), syntax.ToString(), contractCategory);
             }
 
-            private static bool CanAddContracts(MethodDeclarationSyntax method)
+            private static bool CanAddContracts(BaseMethodDeclarationSyntax method)
             {
                 if (method == null)
                     return false;
@@ -245,7 +248,7 @@ namespace ContracsReSharperInterop
             /// Returns a hash code for this instance.
             /// </summary>
             /// <returns>
-            /// A hash code for this instance, suitable for use in hashing algorithms and data structures like a hash table. 
+            /// A hash code for this instance, suitable for use in hashing algorithms and data structures like a hash table.
             /// </returns>
             public override int GetHashCode()
             {

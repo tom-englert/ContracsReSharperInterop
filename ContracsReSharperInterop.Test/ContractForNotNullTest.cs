@@ -72,6 +72,51 @@ namespace Test
         }
 
         [Fact]
+        public void DiagnosticIsGeneratedIfNotAllNotNullParametersOfConstructorHaveContracts()
+        {
+            const string originalCode = @"
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    class Class
+    {
+        Class([NotNull] object arg, [NotNull] object arg2)
+        {
+            Contract.Requires(arg != null);
+
+            arg = arg2;
+        }
+    }
+}";
+
+            var expected = new DiagnosticResult(9, 54, "arg2");
+
+            VerifyCSharpDiagnostic(originalCode, expected);
+
+            const string fixedCode = @"
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    class Class
+    {
+        Class([NotNull] object arg, [NotNull] object arg2)
+        {
+            Contract.Requires(arg != null);
+            Contract.Requires(arg2 != null);
+
+            arg = arg2;
+        }
+    }
+}";
+
+            VerifyCSharpFix(originalCode, fixedCode, null, true);
+        }
+
+        [Fact]
         public void DiagnosticIsGeneratedIfAllNotNullParametersHaveNoContracts()
         {
             const string originalCode = @"
@@ -520,7 +565,6 @@ namespace Test
             VerifyCSharpFix(originalCode, fixedCode, null, true);
         }
 
-
         [Fact]
         public void NoDiagnosticIsGeneratedIfClassHasNotNullFieldsButNoContractInvariantMethod()
         {
@@ -556,12 +600,12 @@ namespace Test
 {
     class Class
     {
-        [NotNull] 
+        [NotNull]
         private object _field;
-        [NotNull] 
+        [NotNull]
         private readonly object _field2;
 
-        void Method(object arg, object arg2) 
+        void Method(object arg, object arg2)
         {
         }
 
@@ -591,10 +635,10 @@ namespace Test
 {
     class Class
     {
-        [NotNull] 
+        [NotNull]
         private int _field;
 
-        void Method(object arg, object arg2) 
+        void Method(object arg, object arg2)
         {
         }
 
@@ -619,10 +663,10 @@ namespace Test
 {
     class Class
     {
-        [NotNull] 
+        [NotNull]
         private int _field;
 
-        void Method(object arg, object arg2) 
+        void Method(object arg, object arg2)
         {
         }
 
