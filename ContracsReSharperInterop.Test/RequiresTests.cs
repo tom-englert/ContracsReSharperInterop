@@ -52,6 +52,45 @@ namespace Test
         }
 
         [Fact]
+        public void SimpleConstuctorWithNotNullArgument()
+        {
+            const string originalCode = @"
+using System.Diagnostics.Contracts;
+
+namespace Test
+{
+    class Class
+    {
+        Class(object arg)
+        {
+            Contract.Requires(arg != null);
+        }
+    }
+}";
+
+            var expected = new DiagnosticResult(8, 22, "arg");
+
+            VerifyCSharpDiagnostic(originalCode, expected);
+
+            const string fixedCode = @"
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    class Class
+    {
+        Class([NotNull] object arg)
+        {
+            Contract.Requires(arg != null);
+        }
+    }
+}";
+
+            VerifyCSharpFix(originalCode, fixedCode, null, true);
+        }
+
+        [Fact]
         public void SimpleMethodWithNotNullArgumentThatAlreadyHasAnAttribute()
         {
             const string originalCode = @"

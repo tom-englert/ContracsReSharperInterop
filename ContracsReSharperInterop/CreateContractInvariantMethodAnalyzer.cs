@@ -34,11 +34,21 @@
             if (classDeclaration == null)
                 return;
 
-            var hasNotNullFields = classDeclaration.ChildNodes().OfType<FieldDeclarationSyntax>().Any(f => f.AttributeLists.ContainsNotNullAttribute());
+            var fields = classDeclaration.ChildNodes()
+                .OfType<FieldDeclarationSyntax>()
+                .Where(f => f.Modifiers.All(m => m.Kind() != SyntaxKind.ReadOnlyKeyword) || f.Modifiers.All(m => m.Kind() != SyntaxKind.StaticKeyword));
 
-            var hasInvariantMethod = classDeclaration.ChildNodes().OfType<MethodDeclarationSyntax>().Any(m => m.AttributeLists.ContainsAttribute("ContractInvariantMethod"));
+            var hasNotNullFields = fields
+                .Any(f => f.AttributeLists.ContainsNotNullAttribute());
 
-            if (hasNotNullFields && !hasInvariantMethod)
+            if (!hasNotNullFields)
+                return;
+
+            var hasInvariantMethod = classDeclaration.ChildNodes()
+                .OfType<MethodDeclarationSyntax>()
+                .Any(m => m.AttributeLists.ContainsAttribute("ContractInvariantMethod"));
+
+            if (!hasInvariantMethod)
             {
                 context.ReportDiagnostic(Diagnostic.Create(_rule, classDeclaration.GetLocation(), classDeclaration.Identifier.Text));
             }
