@@ -1,4 +1,8 @@
-﻿### 1.0.3.0
+﻿### 1.0.4.0
+* Contracts in contstuctors are not detected
+* Ignore static read only fields
+* Fixed adding usings when usings are only inside namespaces
+### 1.0.3.0
 * Create ContractClass and ContractInvariantMethod
 * Create contracts for items with NotNull attributes.
 * Support ContractClassFor with generic base classes

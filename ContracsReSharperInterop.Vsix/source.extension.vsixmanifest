@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
   <Metadata>
-    <Identity Id="ContracsReSharperInterop..6fae8f4c-22f3-40dc-bf36-ddb0c7c37ebf" Version="1.0.3.0" Language="en-US" Publisher="tom-englert"/>
+    <Identity Id="ContracsReSharperInterop..6fae8f4c-22f3-40dc-bf36-ddb0c7c37ebf" Version="1.0.4.0" Language="en-US" Publisher="tom-englert"/>
     <DisplayName>CodeContracs R# Interop</DisplayName>
     <Description xml:space="preserve">A code fix provider that automates adding corresponding R# attributes for CodeContract annotations.A code fix </Description>
     <MoreInfo>https://github.com/tom-englert/ContracsReSharperInterop</MoreInfo>
