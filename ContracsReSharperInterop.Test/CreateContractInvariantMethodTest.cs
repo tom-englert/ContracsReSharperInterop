@@ -78,6 +78,7 @@ namespace Test
             VerifyCSharpDiagnostic(originalCode, expected);
 
             const string fixedCode = @"
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
 using JetBrains.Annotations;
@@ -130,6 +131,7 @@ namespace Test
             const string fixedCode = @"
 namespace Test
 {
+    using System.Diagnostics;
     using System.Diagnostics.Contracts;
     using System.Diagnostics.CodeAnalysis;
     using JetBrains.Annotations;
@@ -180,6 +182,7 @@ namespace Test
             VerifyCSharpDiagnostic(originalCode, expected);
 
             const string fixedCode = @"
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
 using JetBrains.Annotations;
