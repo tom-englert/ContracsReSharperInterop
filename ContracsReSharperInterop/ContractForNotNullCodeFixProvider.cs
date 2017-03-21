@@ -96,6 +96,7 @@
                 .OfType<InvocationExpressionSyntax>()
                 .TakeWhile(s => s.Expression.IsContractExpression(ContractCategory.Requires))
                 .Select(e => e.GetNotNullArgumentIdentifierSyntax<IdentifierNameSyntax>())
+                .Where(s => s != null)
                 .Select(s => semanticModel.GetSymbolInfo(s).Symbol)
                 .Select(s => s?.Name)
                 .TakeWhile(n => parametersBefore.Contains(n))

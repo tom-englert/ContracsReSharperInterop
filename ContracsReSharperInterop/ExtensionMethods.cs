@@ -228,7 +228,7 @@ namespace ContracsReSharperInterop
                 .When<FieldDeclarationSyntax>(item => item.AttributeLists.ContainsAttribute(attributeName))
                 .When<ClassDeclarationSyntax>(item => item.AttributeLists.ContainsAttribute(attributeName))
                 .When<InterfaceDeclarationSyntax>(item => item.AttributeLists.ContainsAttribute(attributeName))
-                .ElseThrow("unsupported node: " + node);
+                .Else(item => false);
         }
 
 

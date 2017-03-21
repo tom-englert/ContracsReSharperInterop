@@ -681,5 +681,51 @@ namespace Test
 }";
             VerifyCSharpFix(originalCode, fixedCode, null, true);
         }
+
+        [Fact]
+        public void DiagnosticGenerationDoesNotFailIfComplexContractsAreAlreadyPresent()
+        {
+            const string originalCode = @"
+namespace Test
+{
+    using System;
+    using System.Diagnostics.CodeAnalysis;
+    using System.Diagnostics.Contracts;
+    using JetBrains.Annotations;
+
+    class Client
+    {
+        public Client([NotNull] object socket, TimeSpan timeout, [NotNull] AsyncCallback socketDataReceived, Action timeoutHandler)
+        {
+            Contract.Requires(socket != null);
+            Contract.Requires((timeout <= TimeSpan.Zero) || (timeoutHandler != null));
+        }
+    }
+}";
+            var expected = new DiagnosticResult(11, 90, "socketDataReceived");
+
+            VerifyCSharpDiagnostic(originalCode, expected);
+
+            const string fixedCode = @"
+namespace Test
+{
+    using System;
+    using System.Diagnostics.CodeAnalysis;
+    using System.Diagnostics.Contracts;
+    using JetBrains.Annotations;
+
+    class Client
+    {
+        public Client([NotNull] object socket, TimeSpan timeout, [NotNull] AsyncCallback socketDataReceived, Action timeoutHandler)
+        {
+            Contract.Requires(socket != null);
+            Contract.Requires(socketDataReceived != null);
+            Contract.Requires((timeout <= TimeSpan.Zero) || (timeoutHandler != null));
+        }
+    }
+}";
+
+            VerifyCSharpFix(originalCode, fixedCode, null, true);
+        }
     }
 }
