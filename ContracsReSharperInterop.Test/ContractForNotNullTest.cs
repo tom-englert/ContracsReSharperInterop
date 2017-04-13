@@ -727,5 +727,43 @@ namespace Test
 
             VerifyCSharpFix(originalCode, fixedCode, null, true);
         }
+        [Fact]
+        public void NoDiagnosticIsGeneratedIfMethodIsOverride()
+        {
+            const string originalCode = @"
+namespace Test
+{
+    using System.Collections.Generic;
+    using System.Runtime.Serialization;
+
+    using JetBrains.Annotations;
+
+    class Class : Dictionary<int, int>
+    {
+        public override void GetObjectData([NotNull] SerializationInfo info, [NotNull] StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+        }
+    }
+}";
+
+            VerifyCSharpDiagnostic(originalCode);
+        }
+    }
+}
+
+namespace Test1
+{
+    using System.Collections.Generic;
+    using System.Runtime.Serialization;
+
+    using JetBrains.Annotations;
+
+    class Class : Dictionary<int, int>
+    {
+        public override void GetObjectData([NotNull] SerializationInfo info, [NotNull] StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+        }
     }
 }

@@ -220,7 +220,9 @@ namespace ContracsReSharperInterop
                     return false;
 
                 if (method.Body != null)
-                    return true;
+                {
+                    return method.Modifiers.All(token => token.Kind() != SyntaxKind.OverrideKeyword); 
+                }
 
                 if (method.Parent.ContainsAttribute("ContractClass"))
                     return true;

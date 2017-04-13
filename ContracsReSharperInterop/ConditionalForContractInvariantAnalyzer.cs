@@ -35,7 +35,7 @@
             if (node == null)
                 return;
 
-            var nodeName = ExtensionMethods.GetAttributeName(node);
+            var nodeName = node.GetAttributeName();
 
             if (!string.Equals("ContractInvariantMethod", nodeName, StringComparison.Ordinal))
                 return;
