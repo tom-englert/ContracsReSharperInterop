@@ -104,7 +104,7 @@ namespace Test
         public abstract event EventHandler<EventArgs> AbstractEvent;
     }
 }";
-            var expected = new DiagnosticResult(8, 5, "Class");
+            var expected = new DiagnosticResult(8, 20, "Class");
 
             VerifyCSharpDiagnostic(originalCode, expected);
 

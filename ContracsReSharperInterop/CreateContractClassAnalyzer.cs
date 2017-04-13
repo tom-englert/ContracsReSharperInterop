@@ -49,7 +49,9 @@
             if (!classDeclaration.DescendantNodes().Where(node => node.IsAbstractMember()).Any(HasNotNullAnntotations))
                 return;
 
-            context.ReportDiagnostic(Diagnostic.Create(_rule, classDeclaration.GetLocation(), classDeclaration.Identifier.Text));
+            var identifier = classDeclaration.Identifier;
+
+            context.ReportDiagnostic(Diagnostic.Create(_rule, identifier.GetLocation(), identifier.Text));
         }
 
         private static void AnalyzeInterface(SyntaxNodeAnalysisContext context)
