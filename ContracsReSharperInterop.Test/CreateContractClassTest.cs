@@ -191,7 +191,7 @@ namespace Test
         event EventHandler<EventArgs> Event;
     }
 }";
-            var expected = new DiagnosticResult(8, 5, "IClass");
+            var expected = new DiagnosticResult(8, 15, "IClass");
 
             VerifyCSharpDiagnostic(originalCode, expected);
 

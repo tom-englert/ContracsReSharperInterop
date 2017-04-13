@@ -64,7 +64,9 @@
             if (!interfaceDeclaration.DescendantNodes().Any(HasNotNullAnntotations))
                 return;
 
-            context.ReportDiagnostic(Diagnostic.Create(_rule, interfaceDeclaration.GetLocation(), interfaceDeclaration.Identifier.Text));
+            var identifier = interfaceDeclaration.Identifier;
+
+            context.ReportDiagnostic(Diagnostic.Create(_rule, identifier.GetLocation(), identifier.Text));
         }
 
         private static bool HasNotNullAnntotations(SyntaxNode node)

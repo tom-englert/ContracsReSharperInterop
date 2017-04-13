@@ -48,10 +48,12 @@
                 .OfType<MethodDeclarationSyntax>()
                 .Any(m => m.AttributeLists.ContainsAttribute("ContractInvariantMethod"));
 
-            if (!hasInvariantMethod)
-            {
-                context.ReportDiagnostic(Diagnostic.Create(_rule, classDeclaration.Identifier.GetLocation(), classDeclaration.Identifier.Text));
-            }
+            if (hasInvariantMethod)
+                return;
+
+            var identifier = classDeclaration.Identifier;
+
+            context.ReportDiagnostic(Diagnostic.Create(_rule, identifier.GetLocation(), identifier.Text));
         }
     }
 }
