@@ -234,26 +234,3 @@ namespace Test
         }
     }
 }
-
-namespace dummy
-{
-    using System.Diagnostics.CodeAnalysis;
-    using System.Diagnostics.Contracts;
-    using JetBrains.Annotations;
-
-    namespace Test
-    {
-        class Class
-        {
-            [NotNull]
-            private readonly object _field;
-
-            Class(object arg, object arg2)
-            {
-                _field = arg;
-            }
-        }
-    }
-
-
-}

@@ -816,7 +816,6 @@ namespace Test
             VerifyCSharpFix(originalCode, fixedCode, null, true);
         }
 
-
         [Fact]
         public void DiagnosticGenerationDoesNotFailIfComplexContractsAreAlreadyPresent()
         {
@@ -862,6 +861,7 @@ namespace Test
 
             VerifyCSharpFix(originalCode, fixedCode, null, true);
         }
+
         [Fact]
         public void NoDiagnosticIsGeneratedIfMethodIsOverride()
         {
@@ -884,23 +884,26 @@ namespace Test
 
             VerifyCSharpDiagnostic(originalCode);
         }
-    }
-}
 
-namespace Test1
+        [Fact]
+        public void NoDiagnosticIsGeneratedIfMethodIsEventHandler()
+        {
+            const string originalCode = @"
+namespace Test
 {
-    using System.Collections.Generic;
-    using System.Runtime.Serialization;
+    using System.ComponentModel;
 
     using JetBrains.Annotations;
 
     class Class
     {
-        [NotNull]
-        private readonly object _x;
-        [NotNull]
-        private readonly object _y;
-        [NotNull]
-        private readonly object _z;
+        private void Window_Closing([NotNull] object sender, [NotNull] CancelEventArgs e)
+        {
+        }
+    }
+}";
+
+            VerifyCSharpDiagnostic(originalCode);
+        }
     }
 }

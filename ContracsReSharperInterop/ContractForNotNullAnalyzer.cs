@@ -221,7 +221,27 @@ namespace ContracsReSharperInterop
 
                 if (method.Body != null)
                 {
-                    return method.Modifiers.All(token => token.Kind() != SyntaxKind.OverrideKeyword); 
+                    if (method.Modifiers.Any(token => token.Kind() == SyntaxKind.OverrideKeyword))
+                        return false;
+
+                    if (method.Modifiers.All(token => token.Kind() != SyntaxKind.PublicKeyword && token.Kind() != SyntaxKind.ProtectedKeyword && token.Kind() != SyntaxKind.InternalKeyword))
+                    {
+                        var parameters = method.ParameterList.Parameters;
+
+                        if (parameters.Count == 2)
+                        {
+                            if ((parameters[0].Type as PredefinedTypeSyntax).Keyword.Kind() == SyntaxKind.ObjectKeyword)
+                            {
+                                if (parameters[1].Type.ToString().EndsWith("EventArgs"))
+                                {
+                                    return false;
+                                }
+                            }
+                            
+                        }
+                    }
+
+                    return true;
                 }
 
                 if (method.Parent.ContainsAttribute("ContractClass"))

@@ -605,16 +605,3 @@ namespace Test
         }
     }
 }
-
-namespace Test
-{
-    using System.Diagnostics.Contracts;
-
-    class Class
-    {
-        void Method(string arg)
-        {
-            Contract.Requires(arg.Length > 0);
-        }
-    }
-}
