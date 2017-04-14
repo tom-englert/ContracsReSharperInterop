@@ -753,6 +753,69 @@ namespace Test
             VerifyCSharpFix(originalCode, fixedCode, null, true);
         }
 
+        [Fact]
+        public void DiagnosticIsGeneratedWithBulkFixIfClassHasNotNullVariablesInSingleFieldsAndContractInvariantMethod()
+        {
+            const string originalCode = @"
+using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    class Class
+    {
+        [NotNull]
+        private object _field1, _field2, _field3;
+
+        void Method(object arg, object arg2)
+        {
+        }
+
+        [ContractInvariantMethod]
+        [SuppressMessage(""Microsoft.Performance"", ""CA1822: MarkMembersAsStatic"", Justification = ""Required for code contracts."")]
+        [Conditional(""CONTRACTS_FULL"")]
+        private void ObjectInvariant()
+        {
+        }
+    }
+}";
+            var expected1 = new DiagnosticResult(11, 24, "_field1");
+            var expected2 = new DiagnosticResult(11, 33, "_field2");
+            var expected3 = new DiagnosticResult(11, 42, "_field3");
+
+            VerifyCSharpDiagnostic(originalCode, expected1, expected2, expected3);
+
+            const string fixedCode = @"
+using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    class Class
+    {
+        [NotNull]
+        private object _field1, _field2, _field3;
+
+        void Method(object arg, object arg2)
+        {
+        }
+
+        [ContractInvariantMethod]
+        [SuppressMessage(""Microsoft.Performance"", ""CA1822: MarkMembersAsStatic"", Justification = ""Required for code contracts."")]
+        [Conditional(""CONTRACTS_FULL"")]
+        private void ObjectInvariant()
+        {
+            Contract.Invariant(_field1 != null);
+            Contract.Invariant(_field2 != null);
+            Contract.Invariant(_field3 != null);
+        }
+    }
+}";
+            VerifyCSharpFix(originalCode, fixedCode, null, true);
+        }
+
 
         [Fact]
         public void DiagnosticGenerationDoesNotFailIfComplexContractsAreAlreadyPresent()

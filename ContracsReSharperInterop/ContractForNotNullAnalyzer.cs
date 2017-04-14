@@ -211,7 +211,7 @@ namespace ContracsReSharperInterop
 
             private static Diag GetDiagnostic(VariableDeclaratorSyntax syntax, ContractCategory contractCategory)
             {
-                return new Diag(syntax.Identifier.GetLocation(), syntax.Identifier.ToString(), contractCategory);
+                return new Diag(syntax.Identifier.GetLocation(), syntax.Identifier.Text, contractCategory);
             }
 
             private static bool CanAddContracts(BaseMethodDeclarationSyntax method)

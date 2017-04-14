@@ -80,32 +80,56 @@ namespace ContracsReSharperInterop
         {
             return argumentExpression.TryCast().Returning<T>()
                 .When<BinaryExpressionSyntax>(GetNotNullArgumentIdentifyerSyntax<T>)
-                .When<PrefixUnaryExpressionSyntax>(GetNotNullStringArgumentIdentifyerSyntax<T>)
+                .When<PrefixUnaryExpressionSyntax>(GetNotNullObjectArgumentIdentifyerSyntax<T>)
                 .Else(expr => null);
         }
 
-        private static T GetNotNullStringArgumentIdentifyerSyntax<T>(PrefixUnaryExpressionSyntax unaryArgumentExpression)
+        private static T GetNotNullObjectArgumentIdentifyerSyntax<T>(PrefixUnaryExpressionSyntax unaryArgumentExpression)
             where T : ExpressionSyntax
         {
             if (unaryArgumentExpression?.Kind() != SyntaxKind.LogicalNotExpression)
                 return null;
-
-            var nullStringChecks = new[] { "string.IsNullOrEmpty", "string.IsNullOrWhitespace" };
 
             var invocationExpressionSyntax = unaryArgumentExpression.Operand as InvocationExpressionSyntax;
             if (invocationExpressionSyntax == null)
                 return null;
 
             var expressionValue = invocationExpressionSyntax.Expression?.ToString();
-
-            if (!nullStringChecks.Any(item => string.Equals(expressionValue, item, StringComparison.OrdinalIgnoreCase)))
+            if (expressionValue == null)
                 return null;
 
-            var arguments = invocationExpressionSyntax.ArgumentList?.Arguments ?? new SeparatedSyntaxList<ArgumentSyntax>();
-            if (arguments.Count != 1)
-                return null;
+            var nullStringChecks = new[] { "string.IsNullOrEmpty", "string.IsNullOrWhitespace" };
 
-            return arguments.Single()?.Expression as T;
+            if (nullStringChecks.Any(item => string.Equals(expressionValue, item, StringComparison.OrdinalIgnoreCase)))
+            {
+                var arguments = invocationExpressionSyntax.ArgumentList?.Arguments ?? new SeparatedSyntaxList<ArgumentSyntax>();
+                if (arguments.Count != 1)
+                    return null;
+
+                return arguments.Single()?.Expression as T;
+            }
+
+            expressionValue = expressionValue.Split('.').Last();
+            var nullObjectChecks = new[] {"Equals", "ReferenceEquals"};
+
+            if (nullObjectChecks.Any(item => string.Equals(expressionValue, item, StringComparison.OrdinalIgnoreCase)))
+            {
+                var arguments = invocationExpressionSyntax.ArgumentList?.Arguments ?? new SeparatedSyntaxList<ArgumentSyntax>();
+                if (arguments.Count != 2)
+                    return null;
+
+                if (arguments[0]?.Expression?.Kind() == SyntaxKind.NullLiteralExpression)
+                {
+                    return arguments[1]?.Expression as T;
+                }
+
+                if (arguments[1]?.Expression?.Kind() == SyntaxKind.NullLiteralExpression)
+                {
+                    return arguments[0]?.Expression as T;
+                }
+            }
+
+            return null;
         }
 
         private static T GetNotNullArgumentIdentifyerSyntax<T>(BinaryExpressionSyntax binaryArgumentExpression)

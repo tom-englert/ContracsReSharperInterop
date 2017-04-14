@@ -52,6 +52,45 @@ namespace Test
         }
 
         [Fact]
+        public void SimpleMethodWithReferenceEqualsNotNullArgument()
+        {
+            const string originalCode = @"
+using System.Diagnostics.Contracts;
+
+namespace Test
+{
+    class Class
+    {
+        void Method(object arg)
+        {
+            Contract.Requires(!ReferenceEquals(arg, null));
+        }
+    }
+}";
+
+            var expected = new DiagnosticResult(8, 28, "arg");
+
+            VerifyCSharpDiagnostic(originalCode, expected);
+
+            const string fixedCode = @"
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    class Class
+    {
+        void Method([NotNull] object arg)
+        {
+            Contract.Requires(!ReferenceEquals(arg, null));
+        }
+    }
+}";
+
+            VerifyCSharpFix(originalCode, fixedCode, null, true);
+        }
+
+        [Fact]
         public void SimpleConstuctorWithNotNullArgument()
         {
             const string originalCode = @"
