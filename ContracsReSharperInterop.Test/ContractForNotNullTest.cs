@@ -636,7 +636,7 @@ namespace Test
     class Class
     {
         [NotNull]
-        private int _field;
+        private int _field = 7;
 
         void Method(object arg, object arg2)
         {
@@ -650,7 +650,7 @@ namespace Test
         }
     }
 }";
-            var expected = new DiagnosticResult(10, 9, "_field");
+            var expected = new DiagnosticResult(11, 21, "_field");
 
             VerifyCSharpDiagnostic(originalCode, expected);
 
@@ -664,7 +664,7 @@ namespace Test
     class Class
     {
         [NotNull]
-        private int _field;
+        private int _field = 7;
 
         void Method(object arg, object arg2)
         {
@@ -681,6 +681,78 @@ namespace Test
 }";
             VerifyCSharpFix(originalCode, fixedCode, null, true);
         }
+
+        [Fact]
+        public void DiagnosticIsGeneratedWithBulkFixIfClassHasNotNullFieldsAndContractInvariantMethod()
+        {
+            const string originalCode = @"
+using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    class Class
+    {
+        [NotNull]
+        private object _field1;
+        [NotNull]
+        private object _field2;
+        [NotNull]
+        private object _field3;
+
+        void Method(object arg, object arg2)
+        {
+        }
+
+        [ContractInvariantMethod]
+        [SuppressMessage(""Microsoft.Performance"", ""CA1822: MarkMembersAsStatic"", Justification = ""Required for code contracts."")]
+        [Conditional(""CONTRACTS_FULL"")]
+        private void ObjectInvariant()
+        {
+        }
+    }
+}";
+            var expected1 = new DiagnosticResult(11, 24, "_field1");
+            var expected2 = new DiagnosticResult(13, 24, "_field2");
+            var expected3 = new DiagnosticResult(15, 24, "_field3");
+
+            VerifyCSharpDiagnostic(originalCode, expected1, expected2, expected3);
+
+            const string fixedCode = @"
+using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+
+namespace Test
+{
+    class Class
+    {
+        [NotNull]
+        private object _field1;
+        [NotNull]
+        private object _field2;
+        [NotNull]
+        private object _field3;
+
+        void Method(object arg, object arg2)
+        {
+        }
+
+        [ContractInvariantMethod]
+        [SuppressMessage(""Microsoft.Performance"", ""CA1822: MarkMembersAsStatic"", Justification = ""Required for code contracts."")]
+        [Conditional(""CONTRACTS_FULL"")]
+        private void ObjectInvariant()
+        {
+            Contract.Invariant(_field1 != null);
+            Contract.Invariant(_field2 != null);
+            Contract.Invariant(_field3 != null);
+        }
+    }
+}";
+            VerifyCSharpFix(originalCode, fixedCode, null, true);
+        }
+
 
         [Fact]
         public void DiagnosticGenerationDoesNotFailIfComplexContractsAreAlreadyPresent()
@@ -759,11 +831,13 @@ namespace Test1
 
     using JetBrains.Annotations;
 
-    class Class : Dictionary<int, int>
+    class Class
     {
-        public override void GetObjectData([NotNull] SerializationInfo info, [NotNull] StreamingContext context)
-        {
-            base.GetObjectData(info, context);
-        }
+        [NotNull]
+        private readonly object _x;
+        [NotNull]
+        private readonly object _y;
+        [NotNull]
+        private readonly object _z;
     }
 }

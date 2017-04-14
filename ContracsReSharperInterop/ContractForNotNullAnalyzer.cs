@@ -76,9 +76,9 @@ namespace ContracsReSharperInterop
             [NotNull, ItemNotNull]
             public IEnumerable<Diag> Analyze()
             {
-                var diags = AnalyzeMethodParameters()
+                var diags = AnalyzeFieldInvariants()
                     .Concat(AnalyzeMethodEnsures())
-                    .Concat(AnalyzeFieldInvariants())
+                    .Concat(AnalyzeMethodParameters())
                     .Where(diag => diag != null)
                     .Distinct()
                     .ToArray();
@@ -171,10 +171,12 @@ namespace ContracsReSharperInterop
                         .Where(item => item.Expression.IsContractExpression(ContractCategory.Invariant)) // find all "Contract.Invariant(...)"
                         .ToArray();
 
-                    var invariantNotNullFields = invariantExpressions?.GetNotNullArgumentIdentifierSyntaxNodes()
+                    var invariantNotNullFields = invariantExpressions?
+                        .GetNotNullArgumentIdentifierSyntaxNodes()
                         .Select(syntax => _semanticModel.GetSymbolInfo(syntax).Symbol) // get the variable symbol
                         .Select(notNullParameterSymbol => _root.GetSyntaxNode<SyntaxNode>(notNullParameterSymbol))
-                        .OfType<VariableDeclaratorSyntax>() ?? Enumerable.Empty<VariableDeclaratorSyntax>();
+                        .OfType<VariableDeclaratorSyntax>()
+                        .ToArray() ?? new VariableDeclaratorSyntax[0];
 
                     var fieldsWithoutContracts = notNullFields.Except(invariantNotNullFields);
 
@@ -209,9 +211,7 @@ namespace ContracsReSharperInterop
 
             private static Diag GetDiagnostic(VariableDeclaratorSyntax syntax, ContractCategory contractCategory)
             {
-                var fieldDeclarationSyntax = syntax?.Ancestors().OfType<FieldDeclarationSyntax>().FirstOrDefault();
-
-                return new Diag(fieldDeclarationSyntax.GetLocation(), syntax.ToString(), contractCategory);
+                return new Diag(syntax.Identifier.GetLocation(), syntax.Identifier.ToString(), contractCategory);
             }
 
             private static bool CanAddContracts(BaseMethodDeclarationSyntax method)
