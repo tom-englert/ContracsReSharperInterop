@@ -5,9 +5,9 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("ContracsReSharperInterop")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("tom-englert.de")]
 [assembly: AssemblyProduct("ContracsReSharperInterop")]
-[assembly: AssemblyCopyright("Copyright © 2016 tom-englert.de")]
+[assembly: AssemblyCopyright("Copyright © 2017 tom-englert.de")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 [assembly: ComVisible(false)]
@@ -20,5 +20,5 @@ using System.Runtime.InteropServices;
 // ReSharper disable once CheckNamespace
 internal class Product
 {
-    public const string Version = "1.0.4.0";
+    public const string Version = "1.1.0.0";
 }
