@@ -70,8 +70,8 @@ namespace ContracsReSharperInterop
         {
             var arguments = node.ArgumentList.Arguments;
 
-            return arguments.Count == 1 // Contract.??? have just one argument
-                ? arguments.Single()?.Expression?.GetNotNullArgumentIdentifierSyntax<T>()
+            return arguments.Count == 1|| arguments.Count == 2 // Contract.??? number of arguments is 1 or 2 (latter with message)
+                ? arguments.First()?.Expression?.GetNotNullArgumentIdentifierSyntax<T>() // first or only argument is the condition
                 : null;
         }
 
