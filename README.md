@@ -1,6 +1,8 @@
 ﻿# CodeContracs R# Interop ![Badge](https://tom-englert.visualstudio.com/_apis/public/build/definitions/75bf84d2-d359-404a-a712-07c9f693f635/9/badge)
 
-Download the latest binaries from the [Visual Studio Gallery](https://visualstudiogallery.msdn.microsoft.com/8005d228-9f16-4a78-906e-366e919af8e5)
+Download the stable release from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=TomEnglert.CodeContracsRInterop)
+
+Download the latest build from the [Open VSIX Gallery](http://vsixgallery.com/extension/ContracsReSharperInterop..6fae8f4c-22f3-40dc-bf36-ddb0c7c37ebf/)
 
 Code fixes to automate adding R#'s `[NotNull]` attributes for the corrseponding `Contract.Requires`, `Contract.Ensures` or `Contract.Invariant`.
 
