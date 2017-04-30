@@ -17,7 +17,7 @@ namespace ContracsReSharperInterop
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     internal class ContractForNotNullAnalyzer : DiagnosticAnalyzer
     {
-        public const string DiagnosticId = "ContracsReSharperInterop_ContractForNotNull";
+        public const string DiagnosticId = "CCRSI_ContractForNotNull";
 
         private const string Title = "Element with [NotNull] attribute does not have a corresponding not-null contract.";
         private const string MessageFormat = "Element '{0}' has a [NotNull] attribute but does not have a corresponding not-null contract.";

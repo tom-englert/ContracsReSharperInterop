@@ -12,7 +12,7 @@
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     internal class ConditionalForContractInvariantAnalyzer : DiagnosticAnalyzer
     {
-        public const string DiagnosticId = "ContracsReSharperInterop_ConditionalForContractInvariant";
+        public const string DiagnosticId = "CCRSI_ConditionalForContractInvariant";
 
         private const string Title = "Missing [Conditional(\"CONTRACTS_FULL\")] attribute.";
         private const string MessageFormat = "Method '{0}' is the contract invariant method but does not have a [Conditional(\"CONTRACTS_FULL\")] attribute.";

@@ -13,7 +13,7 @@
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     internal class CreateContractClassAnalyzer : DiagnosticAnalyzer
     {
-        public const string DiagnosticId = "ContracsReSharperInterop_CreateContractClass";
+        public const string DiagnosticId = "CCRSI_CreateContractClass";
 
         private const string Title = "Missing Contract Class.";
         private const string MessageFormat = "Interface or abstract class '{0}' has [NotNull] annotations but no contract class.";

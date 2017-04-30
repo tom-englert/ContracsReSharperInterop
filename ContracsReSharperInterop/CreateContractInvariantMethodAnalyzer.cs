@@ -11,7 +11,7 @@
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     internal class CreateContractInvariantMethodAnalyzer : DiagnosticAnalyzer
     {
-        public const string DiagnosticId = "ContracsReSharperInterop_CreateContractInvariantMethod";
+        public const string DiagnosticId = "CCRSI_CreateContractInvariantMethod";
 
         private const string Title = "Missing Contract Invariant Method.";
         private const string MessageFormat = "Class '{0}' has [NotNull] annotations on fields but no contract invariant method.";
