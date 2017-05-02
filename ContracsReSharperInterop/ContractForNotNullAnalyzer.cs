@@ -3,6 +3,7 @@ namespace ContracsReSharperInterop
     using System;
     using System.Collections.Generic;
     using System.Collections.Immutable;
+    using System.Diagnostics;
     using System.Linq;
 
     using JetBrains.Annotations;
@@ -36,15 +37,22 @@ namespace ContracsReSharperInterop
 
         private static void Analyze(SemanticModelAnalysisContext context)
         {
-            var root = context.SemanticModel?.SyntaxTree?.GetRoot(context.CancellationToken);
-            if (root == null)
-                return;
-
-            var diags = new Analyzer(context.SemanticModel, root).Analyze();
-
-            foreach (var diag in diags)
+            try
             {
-                context.ReportDiagnostic(Diagnostic.Create(_rule, diag.Location, diag.Name));
+                var root = context.SemanticModel?.SyntaxTree?.GetRoot(context.CancellationToken);
+                if (root == null)
+                    return;
+
+                var diags = new Analyzer(context.SemanticModel, root).Analyze();
+
+                foreach (var diag in diags)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(_rule, diag.Location, diag.Name));
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.Assert(false, ex.ToString());
             }
         }
 
@@ -230,14 +238,13 @@ namespace ContracsReSharperInterop
 
                         if (parameters.Count == 2)
                         {
-                            if ((parameters[0].Type as PredefinedTypeSyntax).Keyword.Kind() == SyntaxKind.ObjectKeyword)
+                            if ((parameters[0].Type as PredefinedTypeSyntax)?.Keyword.Kind() == SyntaxKind.ObjectKeyword)
                             {
                                 if (parameters[1].Type.ToString().EndsWith("EventArgs"))
                                 {
                                     return false;
                                 }
                             }
-                            
                         }
                     }
 
